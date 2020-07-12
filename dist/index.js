@@ -3127,9 +3127,9 @@ function runImpl() {
             `@github.com/${process.env.GITHUB_REPOSITORY}.git`;
         ghActions.info(`Git: push changes to ${actionInputs_1.actionInputs.targetBranch} branch...`);
         yield git.push(remoteRepo, actionInputs_1.actionInputs.targetBranch, {
-            'tags': actionInputs_1.actionInputs.addTag !== undefined,
-            'follow-tags': true,
-            'force': actionInputs_1.actionInputs.pushForce
+            '--tags': actionInputs_1.actionInputs.addTag !== undefined,
+            '--follow-tags': true,
+            '--force': actionInputs_1.actionInputs.pushForce
         });
         actionOutputs_1.actionOutputs.targetYmlFileName.setValue(targetYmlFileName);
         actionOutputs_1.actionOutputs.targetYmlFilePath.setValue(targetYmlFileAbsPath);
