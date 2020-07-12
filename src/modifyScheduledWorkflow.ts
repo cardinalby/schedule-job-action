@@ -1,6 +1,7 @@
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import * as ghActions from '@actions/core';
+import {actionInputs} from "./actionInputs";
 
 interface IGitHubActionsJob {
     env?: { [name: string]: string }
@@ -32,11 +33,13 @@ export function modifyScheduledWorkflow(filePath: string, envRef: string, isTag:
     }
     ghActions.info(`Adding env variables to ${job} job...`);
 
-    job.env.DELAYED_JOB_CHECKOUT_REF = envRef;
-    job.env.DELAYED_JOB_CHECKOUT_REF_IS_TAG = isTag ? 'true' : 'false';
+    const addEnv = (envObj: { [n: string]: string }, name: string, value: string) => {
+        envObj[name] = value;
+        ghActions.info(`${name}=${value}`);
+    };
 
-    ghActions.info(`DELAYED_JOB_CHECKOUT_REF=${job.env.DELAYED_JOB_CHECKOUT_REF}`);
-    ghActions.info(`DELAYED_JOB_CHECKOUT_REF_IS_TAG=${job.env.DELAYED_JOB_CHECKOUT_REF_IS_TAG}`);
+    addEnv(job.env, actionInputs.envRefVariable, envRef);
+    addEnv(job.env, actionInputs.envRefIsTagVariable, isTag ? 'true' : 'false');
 
     const modifiedFileContents = yaml.safeDump(workflow);
 

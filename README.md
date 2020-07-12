@@ -28,7 +28,13 @@ Specify a tag to schedule job for. Will be used as a ref in the checkout step in
 Make commit using specified user.email
 
 * `gitUserName` Default: `GitHub Action`<br>
-Make commit using specified user.name  
+Make commit using specified user.name
+
+* `envRefVariable` Default: `DELAYED_JOB_CHECKOUT_REF`<br>
+Name of variable containing ref (sha or tag) to add to env section of the job
+
+* `envRefIsTagVariable` Default: `DELAYED_JOB_CHECKOUT_REF_IS_TAG`<br>
+Name of variable containing `true` if ref is tag to add to env section of the job
 
 ## Env variable
 

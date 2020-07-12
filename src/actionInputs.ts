@@ -9,4 +9,6 @@ export const actionInputs = {
     addTag: inputs.getString('addTag', false),
     gitUserEmail: inputs.getString('gitUserEmail', true),
     gitUserName: inputs.getString('gitUserName', true),
+    envRefVariable: inputs.getString('envRefVariable', true),
+    envRefIsTagVariable: inputs.getString('envRefIsTagVariable', true)
 }

@@ -31,6 +31,14 @@ inputs:
     description: 'Use specified git user name to commit changes'
     required: false
     default: 'GitHub Action'
+  envRefVariable:
+    description: 'Name of variable containing ref (sha or tag) to add to env section of the job'
+    required: false
+    default: 'DELAYED_JOB_CHECKOUT_REF'
+  envRefIsTagVariable:
+    description: 'Name of variable containing `true` if ref is tag to add to env section of the job'
+    required: false
+    default: 'DELAYED_JOB_CHECKOUT_REF_IS_TAG'
 outputs:
   targetYmlFileName:
     description: 'File name of new yml file'
