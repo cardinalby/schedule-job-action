@@ -1,7 +1,8 @@
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import * as ghActions from '@actions/core';
-import {actionInputs} from "./actionInputs";
+import { actionInputs } from "./actionInputs";
+import { getWorkspacePath } from "github-actions-utils";
 
 interface IGitHubActionsJob {
     env?: { [name: string]: string }
@@ -13,11 +14,12 @@ interface IGithubActionsWorkflow {
     }
 }
 
-export function modifyScheduledWorkflow(filePath: string, envRef: string, isTag: boolean) {
-    ghActions.info(`Parsing ${filePath}...`);
-    const loadedYml = yaml.safeLoad(fs.readFileSync(filePath, 'utf8'));
+export function modifyScheduledWorkflow(relativeFilePath: string, envRef: string, isTag: boolean) {
+    const absFilePath = getWorkspacePath(relativeFilePath);
+    ghActions.info(`Parsing ${relativeFilePath}...`);
+    const loadedYml = yaml.safeLoad(fs.readFileSync(absFilePath, 'utf8'));
     if (typeof loadedYml !== 'object') {
-        throw new Error(`Error parsing yml in ${filePath}`);
+        throw new Error(`Error parsing yml in ${relativeFilePath}`);
     }
     const workflow = loadedYml as IGithubActionsWorkflow;
     if (typeof workflow.jobs !== 'object' || Object.keys(workflow.jobs).length < 1) {
@@ -40,9 +42,10 @@ export function modifyScheduledWorkflow(filePath: string, envRef: string, isTag:
 
     addEnv(job.env, actionInputs.envRefVariable, envRef);
     addEnv(job.env, actionInputs.envRefIsTagVariable, isTag ? 'true' : 'false');
+    addEnv(job.env, actionInputs.envNewYmlFilePathVariable, relativeFilePath);
 
     const modifiedFileContents = yaml.safeDump(workflow);
 
-    ghActions.info(`Saving ${filePath}...`);
-    fs.writeFileSync(filePath, modifiedFileContents);
+    ghActions.info(`Saving ${relativeFilePath}...`);
+    fs.writeFileSync(absFilePath, modifiedFileContents);
 }

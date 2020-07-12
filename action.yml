@@ -31,6 +31,10 @@ inputs:
     description: 'Use specified git user name to commit changes'
     required: false
     default: 'GitHub Action'
+  envNewYmlFilePathVariable:
+    description: 'Name of variable containing new yml file path'
+    required: false
+    default: 'DELAYED_JOB_WORKFLOW_FILE_PATH'
   envRefVariable:
     description: 'Name of variable containing ref (sha or tag) to add to env section of the job'
     required: false

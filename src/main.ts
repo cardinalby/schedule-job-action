@@ -48,7 +48,7 @@ async function runImpl() {
         : fs.constants.COPYFILE_EXCL;
     fs.copyFileSync(actionInputs.templateYmlFile, targetYmlFileAbsPath, copyFlags);
 
-    modifyScheduledWorkflow(targetYmlFileAbsPath, targetRef, actionInputs.addTag !== undefined);
+    modifyScheduledWorkflow(targetYmlFilePath, targetRef, actionInputs.addTag !== undefined);
 
     const git = await getWorkspaceGit();
 
