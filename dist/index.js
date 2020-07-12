@@ -7153,6 +7153,8 @@ exports.actionInputs = {
     addTag: github_actions_utils_1.actionInputs.getString('addTag', false),
     gitUserEmail: github_actions_utils_1.actionInputs.getString('gitUserEmail', true),
     gitUserName: github_actions_utils_1.actionInputs.getString('gitUserName', true),
+    envRefVariable: github_actions_utils_1.actionInputs.getString('envRefVariable', true),
+    envRefIsTagVariable: github_actions_utils_1.actionInputs.getString('envRefIsTagVariable', true)
 };
 
 
@@ -10137,6 +10139,7 @@ exports.modifyScheduledWorkflow = void 0;
 const yaml = __importStar(__webpack_require__(414));
 const fs = __importStar(__webpack_require__(747));
 const ghActions = __importStar(__webpack_require__(470));
+const actionInputs_1 = __webpack_require__(638);
 function modifyScheduledWorkflow(filePath, envRef, isTag) {
     ghActions.info(`Parsing ${filePath}...`);
     const loadedYml = yaml.safeLoad(fs.readFileSync(filePath, 'utf8'));
@@ -10156,10 +10159,12 @@ function modifyScheduledWorkflow(filePath, envRef, isTag) {
         job.env = {};
     }
     ghActions.info(`Adding env variables to ${job} job...`);
-    job.env.DELAYED_JOB_CHECKOUT_REF = envRef;
-    job.env.DELAYED_JOB_CHECKOUT_REF_IS_TAG = isTag ? 'true' : 'false';
-    ghActions.info(`DELAYED_JOB_CHECKOUT_REF=${job.env.DELAYED_JOB_CHECKOUT_REF}`);
-    ghActions.info(`DELAYED_JOB_CHECKOUT_REF_IS_TAG=${job.env.DELAYED_JOB_CHECKOUT_REF_IS_TAG}`);
+    const addEnv = (envObj, name, value) => {
+        envObj[name] = value;
+        ghActions.info(`${name}=${value}`);
+    };
+    addEnv(job.env, actionInputs_1.actionInputs.envRefVariable, envRef);
+    addEnv(job.env, actionInputs_1.actionInputs.envRefIsTagVariable, isTag ? 'true' : 'false');
     const modifiedFileContents = yaml.safeDump(workflow);
     ghActions.info(`Saving ${filePath}...`);
     fs.writeFileSync(filePath, modifiedFileContents);
