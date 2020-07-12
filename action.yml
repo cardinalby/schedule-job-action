@@ -1,0 +1,43 @@
+name: 'schedule-job-action'
+description: 'Schedule a delayed job in GitHub Actions'
+author: 'cardinalby'
+inputs:
+  templateYmlFile:
+    description: 'Path (relative to repo) to template yml file'
+    required: true
+  overrideTargetFile:
+    description: 'Override target file if exists. "true" or "false"'
+    default: 'true'
+    required: false
+  targetYmlFileName:
+    description: 'Name of target yml file to create in .github/workflows dir'
+    required: false
+  targetBranch:
+    description: 'Branch to push changes'
+    required: false
+    default: 'master'
+  pushForce:
+    description: 'Perform push with force flag'
+    required: false
+    default: 'true'
+  addTag:
+    description: 'Name of tag to create (if you want to schedule a job to checkout a tag)'
+    required: false
+  gitUserEmail:
+    description: 'Use specified git user email to commit changes'
+    required: false
+    default: 'action@github.com'
+  gitUserName:
+    description: 'Use specified git user name to commit changes'
+    required: false
+    default: 'GitHub Action'
+outputs:
+  targetYmlFileName:
+    description: 'File name of new yml file'
+  targetYmlFilePath:
+    description: 'Absolute path to new yml file'
+runs:
+  using: 'node12'
+  main: 'dist/index.js'
+branding:
+  icon: 'tag'

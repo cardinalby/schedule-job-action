@@ -1,0 +1,24 @@
+{
+  "name": "schedule-job-action",
+  "private": false,
+  "main": "lib/main.js",
+  "scripts": {
+    "build": "tsc",
+    "pack": "ncc build",
+    "all": "npm run build && npm run pack"
+  },
+  "author": "cardinalby",
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "^1.2.4",
+    "simple-git": "^2.12.0",
+    "github-actions-utils": "^1.0.5",
+    "js-yaml": "^3.14.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^3.12.5",
+    "@types/node": "^12.7.12",
+    "@zeit/ncc": "^0.20.5",
+    "typescript": "^3.6.4"
+  }
+}
