@@ -3113,7 +3113,7 @@ function runImpl() {
             ? undefined
             : fs.constants.COPYFILE_EXCL;
         fs.copyFileSync(actionInputs_1.actionInputs.templateYmlFile, targetYmlFileAbsPath, copyFlags);
-        modifyScheduledWorkflow_1.modifyScheduledWorkflow(targetYmlFileAbsPath, targetRef, actionInputs_1.actionInputs.addTag !== undefined);
+        modifyScheduledWorkflow_1.modifyScheduledWorkflow(targetYmlFilePath, targetRef, actionInputs_1.actionInputs.addTag !== undefined);
         const git = yield getWorkspaceGit();
         ghActions.info(`Git: add ${targetYmlFilePath}...`);
         yield git.add(targetYmlFilePath);
@@ -7153,6 +7153,7 @@ exports.actionInputs = {
     addTag: github_actions_utils_1.actionInputs.getString('addTag', false),
     gitUserEmail: github_actions_utils_1.actionInputs.getString('gitUserEmail', true),
     gitUserName: github_actions_utils_1.actionInputs.getString('gitUserName', true),
+    envNewYmlFilePathVariable: github_actions_utils_1.actionInputs.getString('envNewYmlFilePathVariable', true),
     envRefVariable: github_actions_utils_1.actionInputs.getString('envRefVariable', true),
     envRefIsTagVariable: github_actions_utils_1.actionInputs.getString('envRefIsTagVariable', true)
 };
@@ -10140,11 +10141,13 @@ const yaml = __importStar(__webpack_require__(414));
 const fs = __importStar(__webpack_require__(747));
 const ghActions = __importStar(__webpack_require__(470));
 const actionInputs_1 = __webpack_require__(638);
-function modifyScheduledWorkflow(filePath, envRef, isTag) {
-    ghActions.info(`Parsing ${filePath}...`);
-    const loadedYml = yaml.safeLoad(fs.readFileSync(filePath, 'utf8'));
+const github_actions_utils_1 = __webpack_require__(124);
+function modifyScheduledWorkflow(relativeFilePath, envRef, isTag) {
+    const absFilePath = github_actions_utils_1.getWorkspacePath(relativeFilePath);
+    ghActions.info(`Parsing ${relativeFilePath}...`);
+    const loadedYml = yaml.safeLoad(fs.readFileSync(absFilePath, 'utf8'));
     if (typeof loadedYml !== 'object') {
-        throw new Error(`Error parsing yml in ${filePath}`);
+        throw new Error(`Error parsing yml in ${relativeFilePath}`);
     }
     const workflow = loadedYml;
     if (typeof workflow.jobs !== 'object' || Object.keys(workflow.jobs).length < 1) {
@@ -10165,9 +10168,10 @@ function modifyScheduledWorkflow(filePath, envRef, isTag) {
     };
     addEnv(job.env, actionInputs_1.actionInputs.envRefVariable, envRef);
     addEnv(job.env, actionInputs_1.actionInputs.envRefIsTagVariable, isTag ? 'true' : 'false');
+    addEnv(job.env, actionInputs_1.actionInputs.envNewYmlFilePathVariable, relativeFilePath);
     const modifiedFileContents = yaml.safeDump(workflow);
-    ghActions.info(`Saving ${filePath}...`);
-    fs.writeFileSync(filePath, modifiedFileContents);
+    ghActions.info(`Saving ${relativeFilePath}...`);
+    fs.writeFileSync(absFilePath, modifiedFileContents);
 }
 exports.modifyScheduledWorkflow = modifyScheduledWorkflow;
 
