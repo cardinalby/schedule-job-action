@@ -2726,43 +2726,61 @@ function runImpl() {
         const targetYmlFileName = getTargetYmlFileName(targetRef);
         const targetYmlFilePath = path.join(WORKFLOWS_DIR, targetYmlFileName);
         const targetYmlFileAbsPath = github_actions_utils_1.getWorkspacePath(targetYmlFilePath);
-        if (!actionInputs_1.actionInputs.overrideTargetFile && fs.existsSync(targetYmlFileAbsPath)) {
+        const { owner, repo } = github_1.context.repo;
+        const github = new github_1.GitHub(actionInputs_1.actionInputs.ghToken);
+        const existingFileResponse = yield github.repos.getContents({ owner, repo, path: targetYmlFilePath });
+        if (!actionInputs_1.actionInputs.overrideTargetFile && existingFileResponse.status === 200) {
             throw new Error(`${targetYmlFilePath} file already exists!`);
         }
         ghActions.info(`Reading and modifying ${actionInputs_1.actionInputs.templateYmlFile}...`);
-        let workflowContents = fs.readFileSync(targetYmlFileAbsPath, 'utf8');
+        let workflowContents = fs.readFileSync(actionInputs_1.actionInputs.templateYmlFile, 'utf8');
         workflowContents = modifyScheduledWorkflow_1.modifyScheduledWorkflow(workflowContents, targetYmlFilePath, targetRef, actionInputs_1.actionInputs.addTag !== undefined);
-        const { owner, repo } = github_1.context.repo;
-        const github = new github_1.GitHub(actionInputs_1.actionInputs.ghToken);
-        // const blob = (await github.git.createBlob({ owner, repo, content: workflowContents })).data;
-        ghActions.info(`Requesting a tree with sha = ${process.env.GITHUB_SHA}...`);
-        const tree = (yield github.git.getTree({ owner, repo, tree_sha: process.env.GITHUB_SHA })).data;
-        console.log(tree);
-        ghActions.info(`Creating new tree...`);
-        const newTree = (yield github.git.createTree({ owner, repo, base_tree: tree.sha, tree: [{
-                    content: workflowContents,
-                    mode: "100644",
-                    path: targetYmlFilePath,
-                    type: "blob"
-                }] })).data;
-        console.log(newTree);
-        ghActions.info(`Creating commit with new tree...`);
-        const commit = (yield github.git.createCommit({ owner, repo,
-            parents: [process.env.GITHUB_SHA],
-            tree: newTree.sha,
-            message: `Add delayed ${targetYmlFileName} job`,
+        const existingSha = existingFileResponse.status === 200 && typeof existingFileResponse.data === 'object'
+            ? existingFileResponse.data.sha
+            : undefined;
+        yield github.repos.createOrUpdateFile({ owner, repo,
             author: {
                 email: actionInputs_1.actionInputs.gitUserEmail,
                 name: actionInputs_1.actionInputs.gitUserName
-            }
-        })).data;
-        console.log(commit);
-        ghActions.info(`Updating ref: heads/${actionInputs_1.actionInputs.targetBranch}...`);
-        yield github.git.updateRef({ owner, repo,
-            ref: 'heads/' + actionInputs_1.actionInputs.targetBranch,
-            sha: commit.sha,
-            force: actionInputs_1.actionInputs.pushForce
+            },
+            branch: actionInputs_1.actionInputs.targetBranch,
+            message: `Add delayed ${targetYmlFileName} job`,
+            content: workflowContents,
+            path: targetYmlFilePath,
+            sha: existingSha
         });
+        // const blob = (await github.git.createBlob({ owner, repo, content: workflowContents })).data;
+        // ghActions.info(`Requesting a tree with sha = ${process.env.GITHUB_SHA}...`);
+        // const tree = (await github.git.getTree({ owner, repo, tree_sha: process.env.GITHUB_SHA })).data;
+        // console.log(tree);
+        //
+        // ghActions.info(`Creating new tree...`);
+        // const newTree = (await github.git.createTree({owner, repo, base_tree: tree.sha, tree: [{
+        //         content: workflowContents,
+        //         mode: "100644",
+        //         path: targetYmlFilePath,
+        //         type: "blob"
+        //     }]})).data;
+        // console.log(newTree);
+        //
+        // ghActions.info(`Creating commit with new tree...`);
+        // const commit = (await github.git.createCommit({owner, repo,
+        //     parents: [ process.env.GITHUB_SHA ],
+        //     tree: newTree.sha,
+        //     message: `Add delayed ${targetYmlFileName} job`,
+        //     author: {
+        //         email: actionInputs.gitUserEmail,
+        //         name: actionInputs.gitUserName
+        //     }
+        // })).data;
+        // console.log(commit);
+        //
+        // ghActions.info(`Updating ref: heads/${actionInputs.targetBranch}...`);
+        // await github.git.updateRef({owner, repo,
+        //     ref: 'heads/' + actionInputs.targetBranch,
+        //     sha: commit.sha,
+        //     force: actionInputs.pushForce
+        // });
         if (actionInputs_1.actionInputs.addTag !== undefined) {
             // github.git.createTag({owner, repo, });
             // await git.addTag(actionInputs.addTag);
