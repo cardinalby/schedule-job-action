@@ -2734,7 +2734,6 @@ function runImpl() {
             existingSha = existingFileResponse.data.sha;
         }
         catch (e) {
-            console.log(e);
             if (e.status !== 404) {
                 throw e;
             }
@@ -2752,7 +2751,7 @@ function runImpl() {
             },
             branch: actionInputs_1.actionInputs.targetBranch,
             message: `Add delayed ${targetYmlFileName} job`,
-            content: workflowContents,
+            content: btoa(workflowContents),
             path: targetYmlFilePath,
             sha: existingSha
         });
