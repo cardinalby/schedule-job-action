@@ -11,6 +11,7 @@
   "license": "MIT",
   "dependencies": {
     "@actions/core": "^1.2.4",
+    "@actions/github": "^2.1.1",
     "simple-git": "^2.12.0",
     "github-actions-utils": "^1.0.5",
     "js-yaml": "^3.14.0"

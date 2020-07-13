@@ -4,8 +4,8 @@ import { actionOutputs } from './actionOutputs';
 import { getWorkspacePath } from "github-actions-utils";
 import * as fs from "fs";
 import * as path from "path";
-import simpleGit, {SimpleGit} from 'simple-git';
 import { modifyScheduledWorkflow } from "./modifyScheduledWorkflow";
+import { context, GitHub } from "@actions/github";
 
 const WORKFLOWS_DIR = '.github/workflows';
 
@@ -38,45 +38,59 @@ async function runImpl() {
     const targetYmlFileName = getTargetYmlFileName(targetRef);
     const targetYmlFilePath = path.join(WORKFLOWS_DIR, targetYmlFileName);
     const targetYmlFileAbsPath = getWorkspacePath(targetYmlFilePath);
-    ghActions.info(`Copying ${actionInputs.templateYmlFile} to ${targetYmlFileAbsPath}...`);
-
-    const copyFlags = actionInputs.overrideTargetFile
-        ? undefined
-        : fs.constants.COPYFILE_EXCL;
-    fs.copyFileSync(actionInputs.templateYmlFile, targetYmlFileAbsPath, copyFlags);
-
-    modifyScheduledWorkflow(targetYmlFilePath, targetRef, actionInputs.addTag !== undefined);
-
-    const git = await getWorkspaceGit();
-
-    ghActions.info(`Git: add ${targetYmlFilePath}...`);
-    await git.add(targetYmlFilePath);
-    if (actionInputs.addTag !== undefined) {
-        ghActions.info(`Git: add ${actionInputs.addTag} tag...`);
-        await git.addTag(actionInputs.addTag);
+    if (!actionInputs.overrideTargetFile && fs.existsSync(targetYmlFileAbsPath)) {
+        throw new Error(`${targetYmlFilePath} file already exists!`);
     }
 
-    ghActions.info(`Git: commit changes...`);
-    await git.commit(`Add delayed ${targetYmlFileName} job`);
+    ghActions.info(`Reading and modifying ${actionInputs.templateYmlFile}...`);
+    let workflowContents = fs.readFileSync(targetYmlFileAbsPath, 'utf8');
+    workflowContents = modifyScheduledWorkflow(
+        workflowContents, targetYmlFilePath, targetRef, actionInputs.addTag !== undefined
+    );
 
-    const remoteRepo = `https://${process.env.GITHUB_ACTOR}:${actionInputs.ghToken}` +
-        `@github.com/${process.env.GITHUB_REPOSITORY}.git`;
-    ghActions.info(`Git: push changes to ${actionInputs.targetBranch} branch...`);
-    await git.push(remoteRepo, actionInputs.targetBranch, {
-        '--tags': actionInputs.addTag !== undefined,
-        '--follow-tags': true,
-        '--force': actionInputs.pushForce
+    const {owner, repo} = context.repo;
+    const github = new GitHub(actionInputs.ghToken);
+    // const blob = (await github.git.createBlob({ owner, repo, content: workflowContents })).data;
+
+    ghActions.info(`Requesting a tree with sha = ${process.env.GITHUB_SHA}...`);
+    const tree = (await github.git.getTree({ owner, repo, tree_sha: process.env.GITHUB_SHA })).data;
+    console.log(tree);
+
+    ghActions.info(`Creating new tree...`);
+    const newTree = (await github.git.createTree({owner, repo, base_tree: tree.sha, tree: [{
+            content: workflowContents,
+            mode: "100644",
+            path: targetYmlFilePath,
+            type: "blob"
+        }]})).data;
+    console.log(newTree);
+
+    ghActions.info(`Creating commit with new tree...`);
+    const commit = (await github.git.createCommit({owner, repo,
+        parents: [ process.env.GITHUB_SHA ],
+        tree: newTree.sha,
+        message: `Add delayed ${targetYmlFileName} job`,
+        author: {
+            email: actionInputs.gitUserEmail,
+            name: actionInputs.gitUserName
+        }
+    })).data;
+    console.log(commit);
+
+    ghActions.info(`Updating ref: heads/${actionInputs.targetBranch}...`);
+    await github.git.updateRef({owner, repo,
+        ref: 'heads/' + actionInputs.targetBranch,
+        sha: commit.sha,
+        force: actionInputs.pushForce
     });
+
+    if (actionInputs.addTag !== undefined) {
+        // github.git.createTag({owner, repo, });
+        // await git.addTag(actionInputs.addTag);
+    }
 
     actionOutputs.targetYmlFileName.setValue(targetYmlFileName);
     actionOutputs.targetYmlFilePath.setValue(targetYmlFileAbsPath);
-}
-
-async function getWorkspaceGit(): Promise<SimpleGit> {
-    const git = simpleGit(getWorkspacePath());
-    await git.addConfig('user.email', actionInputs.gitUserEmail);
-    await git.addConfig('user.name', actionInputs.gitUserName);
-    return git;
 }
 
 function getTargetYmlFileName(targetRef: string): string {

@@ -14,12 +14,15 @@ interface IGithubActionsWorkflow {
     }
 }
 
-export function modifyScheduledWorkflow(relativeFilePath: string, envRef: string, isTag: boolean) {
-    const absFilePath = getWorkspacePath(relativeFilePath);
-    ghActions.info(`Parsing ${relativeFilePath}...`);
-    const loadedYml = yaml.safeLoad(fs.readFileSync(absFilePath, 'utf8'));
+export function modifyScheduledWorkflow(
+    workflowContents: string,
+    relativeFilePath: string,
+    envRef: string,
+    isTag: boolean): string
+{
+    const loadedYml = yaml.safeLoad(workflowContents);
     if (typeof loadedYml !== 'object') {
-        throw new Error(`Error parsing yml in ${relativeFilePath}`);
+        throw new Error(`Error parsing workflow yml`);
     }
     const workflow = loadedYml as IGithubActionsWorkflow;
     if (typeof workflow.jobs !== 'object' || Object.keys(workflow.jobs).length < 1) {
@@ -44,8 +47,5 @@ export function modifyScheduledWorkflow(relativeFilePath: string, envRef: string
     addEnv(job.env, actionInputs.envRefIsTagVariable, isTag ? 'true' : 'false');
     addEnv(job.env, actionInputs.envNewYmlFilePathVariable, relativeFilePath);
 
-    const modifiedFileContents = yaml.safeDump(workflow);
-
-    ghActions.info(`Saving ${relativeFilePath}...`);
-    fs.writeFileSync(absFilePath, modifiedFileContents);
+    return yaml.safeDump(workflow);
 }
