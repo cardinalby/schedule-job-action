@@ -48,7 +48,6 @@ async function runImpl() {
         const existingFileResponse = await github.repos.getContents({owner, repo, path: targetYmlFilePath});
         existingSha = (existingFileResponse.data as Octokit.ReposGetContentsResponseItem).sha;
     } catch (e) {
-        console.log(e);
         if (e.status !== 404) {
             throw e;
         }
@@ -70,7 +69,7 @@ async function runImpl() {
         },
         branch: actionInputs.targetBranch,
         message: `Add delayed ${targetYmlFileName} job`,
-        content: workflowContents,
+        content: btoa(workflowContents),
         path: targetYmlFilePath,
         sha: existingSha
     });
