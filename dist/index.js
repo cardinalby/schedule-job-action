@@ -3087,9 +3087,6 @@ function run() {
 }
 function runImpl() {
     return __awaiter(this, void 0, void 0, function* () {
-        if (process.env.GITHUB_TOKEN === undefined) {
-            throw new Error('GITHUB_TOKEN env variable is not set');
-        }
         if (process.env.GITHUB_ACTOR === undefined) {
             throw new Error('GITHUB_ACTOR env variable is not set');
         }
@@ -3123,7 +3120,7 @@ function runImpl() {
         }
         ghActions.info(`Git: commit changes...`);
         yield git.commit(`Add delayed ${targetYmlFileName} job`);
-        const remoteRepo = `https://${process.env.GITHUB_ACTOR}:${process.env.GITHUB_TOKEN}` +
+        const remoteRepo = `https://${process.env.GITHUB_ACTOR}:${actionInputs_1.actionInputs.ghToken}` +
             `@github.com/${process.env.GITHUB_REPOSITORY}.git`;
         ghActions.info(`Git: push changes to ${actionInputs_1.actionInputs.targetBranch} branch...`);
         yield git.push(remoteRepo, actionInputs_1.actionInputs.targetBranch, {
@@ -7145,6 +7142,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.actionInputs = void 0;
 const github_actions_utils_1 = __webpack_require__(124);
 exports.actionInputs = {
+    ghToken: github_actions_utils_1.actionInputs.getString('ghToken', true, true),
     templateYmlFile: github_actions_utils_1.actionInputs.getWsPath('templateYmlFile', true),
     overrideTargetFile: github_actions_utils_1.actionInputs.getBool('overrideTargetFile', true),
     targetYmlFileName: github_actions_utils_1.actionInputs.getString('targetYmlFileName', false),
