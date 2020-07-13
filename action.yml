@@ -2,6 +2,9 @@ name: 'schedule-job-action'
 description: 'Schedule a delayed job in GitHub Actions'
 author: 'cardinalby'
 inputs:
+  ghToken:
+    description: 'Special GitHub access token with `workflows` permission'
+    required: true
   templateYmlFile:
     description: 'Path (relative to repo) to template yml file'
     required: true
