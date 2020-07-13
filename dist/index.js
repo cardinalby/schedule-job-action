@@ -2728,16 +2728,23 @@ function runImpl() {
         const targetYmlFileAbsPath = github_actions_utils_1.getWorkspacePath(targetYmlFilePath);
         const { owner, repo } = github_1.context.repo;
         const github = new github_1.GitHub(actionInputs_1.actionInputs.ghToken);
-        const existingFileResponse = yield github.repos.getContents({ owner, repo, path: targetYmlFilePath });
-        if (!actionInputs_1.actionInputs.overrideTargetFile && existingFileResponse.status === 200) {
+        let existingSha;
+        try {
+            const existingFileResponse = yield github.repos.getContents({ owner, repo, path: targetYmlFilePath });
+            existingSha = existingFileResponse.data.sha;
+        }
+        catch (e) {
+            console.log(e);
+            if (e.status !== 404) {
+                throw e;
+            }
+        }
+        if (!actionInputs_1.actionInputs.overrideTargetFile && existingSha) {
             throw new Error(`${targetYmlFilePath} file already exists!`);
         }
         ghActions.info(`Reading and modifying ${actionInputs_1.actionInputs.templateYmlFile}...`);
         let workflowContents = fs.readFileSync(actionInputs_1.actionInputs.templateYmlFile, 'utf8');
         workflowContents = modifyScheduledWorkflow_1.modifyScheduledWorkflow(workflowContents, targetYmlFilePath, targetRef, actionInputs_1.actionInputs.addTag !== undefined);
-        const existingSha = existingFileResponse.status === 200 && typeof existingFileResponse.data === 'object'
-            ? existingFileResponse.data.sha
-            : undefined;
         yield github.repos.createOrUpdateFile({ owner, repo,
             author: {
                 email: actionInputs_1.actionInputs.gitUserEmail,
