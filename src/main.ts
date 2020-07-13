@@ -19,9 +19,6 @@ async function run(): Promise<void> {
 }
 
 async function runImpl() {
-    if (process.env.GITHUB_TOKEN === undefined) {
-        throw new Error('GITHUB_TOKEN env variable is not set');
-    }
     if (process.env.GITHUB_ACTOR === undefined) {
         throw new Error('GITHUB_ACTOR env variable is not set');
     }
@@ -62,7 +59,7 @@ async function runImpl() {
     ghActions.info(`Git: commit changes...`);
     await git.commit(`Add delayed ${targetYmlFileName} job`);
 
-    const remoteRepo = `https://${process.env.GITHUB_ACTOR}:${process.env.GITHUB_TOKEN}` +
+    const remoteRepo = `https://${process.env.GITHUB_ACTOR}:${actionInputs.ghToken}` +
         `@github.com/${process.env.GITHUB_REPOSITORY}.git`;
     ghActions.info(`Git: push changes to ${actionInputs.targetBranch} branch...`);
     await git.push(remoteRepo, actionInputs.targetBranch, {

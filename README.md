@@ -6,6 +6,9 @@
 
 Specify 1 input from the list to search release by:
 
+* `ghToken` **Required**<br>
+Special GitHub access token with `workflows` permission
+
 * `templateYmlFile` **Required**<br>
 Path (relative to the repository) to template scheduled workflow yml file.
 
@@ -38,10 +41,6 @@ Name of variable containing ref (sha or tag) to add to env section of the job
 
 * `envRefIsTagVariable` Default: `DELAYED_JOB_CHECKOUT_REF_IS_TAG`<br>
 Name of variable containing `true` if ref is tag to add to env section of the job
-
-## Env variable
-
-You should set `GITHUB_TOKEN` env variable to enable action to access GitHub API. See example.
 
 ## Outputs
 Values from [API](https://docs.github.com/en/rest/reference/repos#releases) response object:
