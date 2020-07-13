@@ -43,8 +43,17 @@ async function runImpl() {
     const {owner, repo} = context.repo;
     const github = new GitHub(actionInputs.ghToken);
 
-    const existingFileResponse = await github.repos.getContents({ owner, repo, path: targetYmlFilePath });
-    if (!actionInputs.overrideTargetFile && existingFileResponse.status === 200) {
+    let existingSha: string|undefined;
+    try {
+        const existingFileResponse = await github.repos.getContents({owner, repo, path: targetYmlFilePath});
+        existingSha = (existingFileResponse.data as Octokit.ReposGetContentsResponseItem).sha;
+    } catch (e) {
+        console.log(e);
+        if (e.status !== 404) {
+            throw e;
+        }
+    }
+    if (!actionInputs.overrideTargetFile && existingSha) {
         throw new Error(`${targetYmlFilePath} file already exists!`);
     }
 
@@ -53,10 +62,6 @@ async function runImpl() {
     workflowContents = modifyScheduledWorkflow(
         workflowContents, targetYmlFilePath, targetRef, actionInputs.addTag !== undefined
     );
-
-    const existingSha = existingFileResponse.status === 200 && typeof existingFileResponse.data === 'object'
-        ? (existingFileResponse.data as Octokit.ReposGetContentsResponseItem).sha
-        : undefined;
 
     await github.repos.createOrUpdateFile({owner, repo,
         author: {
