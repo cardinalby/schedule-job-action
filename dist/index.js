@@ -2762,16 +2762,19 @@ function runImpl() {
         const targetYmlFileName = getTargetYmlFileName(targetRef);
         const targetYmlFilePath = path.join(WORKFLOWS_DIR, targetYmlFileName);
         const targetYmlFileAbsPath = github_actions_utils_1.getWorkspacePath(targetYmlFilePath);
+        ghActions.info(`GitHub: check if ${targetYmlFilePath} file already exists...`);
         const existingFileResponse = yield octokitHandle404_1.octokitHandle404(github.repos.getContents, { owner, repo, path: targetYmlFilePath });
         const existingSha = existingFileResponse !== undefined
             ? existingFileResponse.data.sha
             : undefined;
+        ghActions.info(existingSha ? `File found: ${existingSha}` : `File not found`);
         if (existingSha && !actionInputs_1.actionInputs.overrideTargetFile) {
-            throw new Error(`${targetYmlFilePath} file already exists!`);
+            throw new Error(`${targetYmlFilePath} file already exists but overrideTargetFile is false!`);
         }
         ghActions.info(`Reading and modifying ${actionInputs_1.actionInputs.templateYmlFile}...`);
         let workflowContents = fs.readFileSync(actionInputs_1.actionInputs.templateYmlFile, 'utf8');
         workflowContents = modifyScheduledWorkflow_1.modifyScheduledWorkflow(workflowContents, targetYmlFilePath, targetRef, actionInputs_1.actionInputs.addTag !== undefined);
+        ghActions.info(`GitHub: Creating ${targetYmlFilePath} workflow file from the template...`);
         yield github.repos.createOrUpdateFile({ owner, repo,
             author: {
                 email: actionInputs_1.actionInputs.gitUserEmail,
@@ -2785,11 +2788,15 @@ function runImpl() {
         });
         if (actionInputs_1.actionInputs.addTag !== undefined) {
             const tagRef = 'tags/' + actionInputs_1.actionInputs.addTag;
+            ghActions.info(`GitHub: Checking if ${actionInputs_1.actionInputs.addTag} exists...`);
             const existingTag = yield octokitHandle404_1.octokitHandle404(github.git.getRef, { owner, repo, ref: tagRef });
             if (existingTag !== undefined) {
+                ghActions.info(`Tag found at commit ${existingTag.data.object.sha}`);
+                ghActions.info(`GitHub: Updating ${actionInputs_1.actionInputs.addTag} to sha ${process.env.GITHUB_SHA}...`);
                 yield github.git.updateRef({ owner, repo, ref: tagRef, sha: process.env.GITHUB_SHA });
             }
             else {
+                ghActions.info(`GitHub: Creating ${actionInputs_1.actionInputs.addTag} on sha ${process.env.GITHUB_SHA}...`);
                 yield github.git.createRef({ owner, repo, ref: tagRef, sha: process.env.GITHUB_SHA });
             }
         }
