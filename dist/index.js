@@ -2783,7 +2783,7 @@ function runImpl() {
         }
         ghActions.info(`Reading and modifying ${actionInputs_1.actionInputs.templateYmlFile}...`);
         let workflowContents = fs.readFileSync(actionInputs_1.actionInputs.templateYmlFile, 'utf8');
-        workflowContents = modifyScheduledWorkflow_1.modifyScheduledWorkflow(workflowContents, targetYmlFilePath, targetRef, actionInputs_1.actionInputs.addTag !== undefined, actionInputs_1.actionInputs.targetBranch);
+        workflowContents = modifyScheduledWorkflow_1.modifyScheduledWorkflow(workflowContents, targetYmlFilePath, targetRef, actionInputs_1.actionInputs.addTag !== undefined, actionInputs_1.actionInputs.targetBranch, actionInputs_1.actionInputs.jobPayload);
         const tagManager = actionInputs_1.actionInputs.addTag !== undefined
             ? new githubTagManager_1.GithubTagManager(github, targetOwner, targetRepo, actionInputs_1.actionInputs.addTag)
             : undefined;
@@ -25051,6 +25051,7 @@ exports.actionInputs = {
         throw new Error('Invalid "targetRepo" input format. Should look like: "ownername/reponame"');
     }),
     targetBranch: github_actions_utils_1.actionInputs.getString('targetBranch', true),
+    jobPayload: github_actions_utils_1.actionInputs.getString('jobPayload', false),
     addTag: github_actions_utils_1.actionInputs.getString('addTag', false)
 };
 
@@ -29636,7 +29637,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.modifyScheduledWorkflow = void 0;
 const yaml = __importStar(__webpack_require__(414));
 const ghActions = __importStar(__webpack_require__(470));
-function modifyScheduledWorkflow(workflowContents, relativeFilePath, envRef, isTag, unscheduleTargetBranch) {
+function modifyScheduledWorkflow(workflowContents, relativeFilePath, envRef, isTag, unscheduleTargetBranch, jobPayload) {
     const loadedYml = yaml.safeLoad(workflowContents);
     if (typeof loadedYml !== 'object') {
         throw new Error(`Error parsing workflow yml`);
@@ -29662,6 +29663,9 @@ function modifyScheduledWorkflow(workflowContents, relativeFilePath, envRef, isT
     addEnv(job.env, 'DELAYED_JOB_CHECKOUT_REF_IS_TAG', isTag ? 'true' : 'false');
     addEnv(job.env, 'DELAYED_JOB_WORKFLOW_FILE_PATH', relativeFilePath);
     addEnv(job.env, 'DELAYED_JOB_WORKFLOW_UNSCHEDULE_TARGET_BRANCH', unscheduleTargetBranch);
+    if (jobPayload !== undefined) {
+        addEnv(job.env, 'DELAYED_JOB_PAYLOAD', jobPayload);
+    }
     return yaml.safeDump(workflow);
 }
 exports.modifyScheduledWorkflow = modifyScheduledWorkflow;
