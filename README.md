@@ -27,21 +27,6 @@ Perform `git push` with `--force` flag
 * `addTag`<br>
 Specify a tag to schedule job for. Will be used as a ref in the checkout step instead of commit sha.
 
-* `gitUserEmail` Default: `action@github.com`<br>
-Make commit using specified user.email
-
-* `gitUserName` Default: `GitHub Action`<br>
-Make commit using specified user.name
-
-* `envNewYmlFilePathVariable` Default: `DELAYED_JOB_WORKFLOW_FILE_PATH`<br>
-Name of variable containing new yml file path
-
-* `envRefVariable` Default: `DELAYED_JOB_CHECKOUT_REF`<br>
-Name of variable containing ref (sha or tag) to add to env section of the job
-
-* `envRefIsTagVariable` Default: `DELAYED_JOB_CHECKOUT_REF_IS_TAG`<br>
-Name of variable containing `true` if ref is tag to add to env section of the job
-
 ## Outputs
 Values from [API](https://docs.github.com/en/rest/reference/repos#releases) response object:
 

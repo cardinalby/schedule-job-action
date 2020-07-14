@@ -18,7 +18,9 @@ export function modifyScheduledWorkflow(
     workflowContents: string,
     relativeFilePath: string,
     envRef: string,
-    isTag: boolean): string
+    isTag: boolean,
+    unscheduleTargetBranch: string
+): string
 {
     const loadedYml = yaml.safeLoad(workflowContents);
     if (typeof loadedYml !== 'object') {
@@ -43,9 +45,10 @@ export function modifyScheduledWorkflow(
         ghActions.info(`${name}=${value}`);
     };
 
-    addEnv(job.env, actionInputs.envRefVariable, envRef);
-    addEnv(job.env, actionInputs.envRefIsTagVariable, isTag ? 'true' : 'false');
-    addEnv(job.env, actionInputs.envNewYmlFilePathVariable, relativeFilePath);
+    addEnv(job.env, 'DELAYED_JOB_CHECKOUT_REF', envRef);
+    addEnv(job.env, 'DELAYED_JOB_CHECKOUT_REF_IS_TAG', isTag ? 'true' : 'false');
+    addEnv(job.env, 'DELAYED_JOB_WORKFLOW_FILE_PATH', relativeFilePath);
+    addEnv(job.env, 'DELAYED_JOB_WORKFLOW_UNSCHEDULE_TARGET_BRANCH', unscheduleTargetBranch);
 
     return yaml.safeDump(workflow);
 }

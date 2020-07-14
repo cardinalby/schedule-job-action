@@ -8,6 +8,7 @@ import { modifyScheduledWorkflow } from "./modifyScheduledWorkflow";
 import { context, GitHub } from "@actions/github";
 import { Octokit } from '@octokit/rest';
 import {octokitHandle404} from "./octokitHandle404";
+import {consts} from "./consts";
 
 const WORKFLOWS_DIR = '.github/workflows';
 
@@ -48,7 +49,7 @@ async function runImpl() {
     ghActions.info(`GitHub: check if ${targetYmlFilePath} file already exists...`);
     const existingFileResponse = await octokitHandle404(
         github.repos.getContents,
-        {owner, repo, path: targetYmlFilePath}
+        { owner, repo, path: targetYmlFilePath, ref: 'heads/' + actionInputs.targetBranch }
         );
     const existingSha = existingFileResponse !== undefined
         ? (existingFileResponse.data as Octokit.ReposGetContentsResponseItem).sha
@@ -62,14 +63,18 @@ async function runImpl() {
     ghActions.info(`Reading and modifying ${actionInputs.templateYmlFile}...`);
     let workflowContents = fs.readFileSync(actionInputs.templateYmlFile, 'utf8');
     workflowContents = modifyScheduledWorkflow(
-        workflowContents, targetYmlFilePath, targetRef, actionInputs.addTag !== undefined
+        workflowContents,
+        targetYmlFilePath,
+        targetRef,
+        actionInputs.addTag !== undefined,
+        actionInputs.targetBranch
     );
 
     ghActions.info(`GitHub: Creating ${targetYmlFilePath} workflow file from the template...`);
     await github.repos.createOrUpdateFile({owner, repo,
         author: {
-            email: actionInputs.gitUserEmail,
-            name: actionInputs.gitUserName
+            email: consts.gitAuthorEmail,
+            name: consts.gitAuthorName
         },
         branch: actionInputs.targetBranch,
         message: `Add delayed ${targetYmlFileName} job`,
@@ -97,8 +102,8 @@ async function runImpl() {
 }
 
 function isOwnCommit(commit: Octokit.ReposGetCommitResponse): boolean {
-    return (commit.commit.author.name === actionInputs.gitUserName &&
-        commit.commit.author.email === actionInputs.gitUserEmail) ||
+    return (commit.commit.author.name === consts.gitAuthorName &&
+        commit.commit.author.email === consts.gitAuthorEmail) ||
         commit.author.login === 'actions-user';
 }
 
