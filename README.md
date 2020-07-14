@@ -1,13 +1,111 @@
 ![Build Status](https://github.com/cardinalby/schedule-job-action/workflows/build-test/badge.svg)
 
-# Schedule delayed GitHub Actions job 
+# Schedule delayed GitHub Actions job
+
+Sometimes you can't finish your CI/CD job in a single run: you have to wait for some event or 
+until an external long-running process finishes. In that case, you can schedule a delayed job 
+to finish it later. 
+
+### Generate token
+To make it work, you have to 
+[generate](https://github.com/settings/tokens) a new GitHub token with `workflows` and `repo` 
+permissions because by default GitHub permits creating workflows by automation tools. Add new token to
+the secret with the `WORKFLOWS_TOKEN` name.
+
+### Schedule delayed job in your workflow
+```yaml
+# ... your steps ...
+# ...
+# schedule the rest for finishing later:
+
+- uses: cardinalby/schedule-job-action@v1
+  with:
+    ghToken: ${{ secrets.WORKFLOWS_TOKEN }}
+    templateYmlFile: '.github-scheduled-workflows/example.yml'
+```
+
+### Define scheduled job
+Create `.github-scheduled-workflows/example.yml` scheduled workflow definition (using `cron` trigger) with the 
+single job:
+
+```yaml
+name: "example-cron-action"
+on:
+  schedule:
+    - cron:  '*/15 * * * *'    # At every 15th minute
+
+jobs:
+  singleJobName:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [12.x]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ env.DELAYED_JOB_CHECKOUT_REF }} # SHA that triggered your original job 
+
+      - name: Do some work
+        run: echo $GITHUB_SHA
+
+      # If job finished successfully, remove the workflow file (and tag if necessary)
+      - name: Remove scheduled job
+        uses: cardinalby/unschedule-job-action@v1
+        with:
+          ghToken: ${{ secrets.WORKFLOWS_TOKEN }} 
+``` 
+ 
+Please note, it's not located in the `.github` directory. It's just a template that will
+be copied to the `.github` directory during the run. 
+
+### Template modifications
+Also, the action will add several env variables to the `env` section of the template workflow file:
+
+* `DELAYED_JOB_CHECKOUT_REF`<br>
+SHA of a commit triggered the original workflow or tag name from the  `addTag` input
+
+* `DELAYED_JOB_CHECKOUT_REF_IS_TAG`<br>
+`true` (ref above is a tag name) or `false` (it's a commit SHA)
+
+* `DELAYED_JOB_WORKFLOW_FILE_PATH`<br> 
+`.github/workflows/example-%SHA%.yml` in our example (see `targetYmlFileName` input).
+
+* `DELAYED_JOB_WORKFLOW_UNSCHEDULE_TARGET_BRANCH`<br>
+`master` (see `targetBranch` input)
+
+* `DELAYED_JOB_PAYLOAD`<br>
+If `jobPayload` input was filled.
+
+Step with [cardinalby/unschedule-job-action](https://github.com/cardinalby/unschedule-job-action/) action
+utilizes these env variables for proper removing of the delayed workflow file and tag. 
+
+### Limit attempts number
+To limit failed attempts number for the delayed job to run, add 
+[cardinalby/unschedule-job-action](https://github.com/cardinalby/unschedule-job-action/)
+as a first step in `.github-scheduled-workflows/example.yml` (before checkout) with the condition:
+
+```yaml
+- name: Remove scheduled job after 10 attempts
+  uses: cardinalby/unschedule-job-action@v1
+  if: github.run_number > 10
+  with:
+    ghToken: ${{ secrets.WORKFLOWS_TOKEN }} 
+```
+
+### Scheduled actions reminder
+
+Remember, scheduled workflows can run only in the main branch (`master`) of the repository. 
+
+### Infinite loop protection
+
+The action checks if a commit triggered the run was made by the action itself (adding 
+scheduled workflow file) or by other action (deleting scheduled workflow file) to prevent
+an infinite loop caused by actions.
 
 ## Inputs
 
-Specify 1 input from the list to search release by:
-
 * `ghToken` **Required**<br>
-Special GitHub access token with `workflows` permission
+Special GitHub access token with `workflows` permission. Use secrets!
 
 * `templateYmlFile` **Required**<br>
 Path (relative to the repository) to template scheduled workflow yml file.
@@ -27,17 +125,10 @@ Branch to push. Please note, scheduled jobs work only in the default branch.
 * `addTag`<br>
 Specify a tag to schedule job for. Will be used as a ref in the checkout step instead of commit sha.
 
+* `jobPayload`<br>
+Optional, pass a string to `DELAYED_JOB_PAYLOAD` env variable in delayed workflow file.
+
 ## Outputs
-Values from [API](https://docs.github.com/en/rest/reference/repos#releases) response object:
 
-* `targetYmlFileName` File name of the new yml file (inside `.github/workflows` folder)
-* `targetYmlFilePath` Absolute path to target yml file
-
-## Example usage()
-```yaml
-- uses: cardinalby/schedule-job-action@v1
-  env:
-    GITHUB_TOKEN: ${{ github.token }}
-  with:
-    templateYmlFile: '.github-scheduled-workflows/example.yml'    
-```
+* `targetYmlFileName` File name of the new yml file (inside `.github/workflows` folder).
+* `targetYmlFilePath` Absolute path to the target yml file.

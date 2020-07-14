@@ -19,6 +19,7 @@ export const actionInputs = {
         }
         ),
     targetBranch: inputs.getString('targetBranch', true),
+    jobPayload: inputs.getString('jobPayload', false),
     addTag: inputs.getString('addTag', false)
 }
 

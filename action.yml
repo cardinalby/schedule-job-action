@@ -29,6 +29,9 @@ inputs:
   addTag:
     description: 'Name of tag to create (if you want to schedule a job to checkout a tag)'
     required: false
+  jobPayload:
+    description: 'Optional, pass a string to DELAYED_JOB_PAYLOAD env variable in delayed workflow file'
+    required: false
 outputs:
   targetYmlFileName:
     description: 'File name of new yml file'

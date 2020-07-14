@@ -77,7 +77,8 @@ async function runImpl() {
         targetYmlFilePath,
         targetRef,
         actionInputs.addTag !== undefined,
-        actionInputs.targetBranch
+        actionInputs.targetBranch,
+        actionInputs.jobPayload
     );
 
     const tagManager = actionInputs.addTag !== undefined

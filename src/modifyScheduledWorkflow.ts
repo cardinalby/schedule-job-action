@@ -19,7 +19,8 @@ export function modifyScheduledWorkflow(
     relativeFilePath: string,
     envRef: string,
     isTag: boolean,
-    unscheduleTargetBranch: string
+    unscheduleTargetBranch: string,
+    jobPayload?: string|undefined
 ): string
 {
     const loadedYml = yaml.safeLoad(workflowContents);
@@ -49,6 +50,10 @@ export function modifyScheduledWorkflow(
     addEnv(job.env, 'DELAYED_JOB_CHECKOUT_REF_IS_TAG', isTag ? 'true' : 'false');
     addEnv(job.env, 'DELAYED_JOB_WORKFLOW_FILE_PATH', relativeFilePath);
     addEnv(job.env, 'DELAYED_JOB_WORKFLOW_UNSCHEDULE_TARGET_BRANCH', unscheduleTargetBranch);
+
+    if (jobPayload !== undefined) {
+        addEnv(job.env, 'DELAYED_JOB_PAYLOAD', jobPayload);
+    }
 
     return yaml.safeDump(workflow);
 }
