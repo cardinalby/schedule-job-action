@@ -2750,7 +2750,7 @@ function runImpl() {
         const { owner, repo } = github_1.context.repo;
         const github = new github_1.GitHub(actionInputs_1.actionInputs.ghToken);
         const currentCommit = (yield github.repos.getCommit({ owner, repo, ref: process.env.GITHUB_SHA })).data;
-        if (isOwnCommit(currentCommit)) {
+        if (isTriggeredByAction(currentCommit)) {
             ghActions.info('Commit was triggered by the action, skip to prevent a loop');
             return;
         }
@@ -2763,8 +2763,16 @@ function runImpl() {
         const targetYmlFileName = getTargetYmlFileName(targetRef);
         const targetYmlFilePath = path.join(WORKFLOWS_DIR, targetYmlFileName);
         const targetYmlFileAbsPath = github_actions_utils_1.getWorkspacePath(targetYmlFilePath);
-        ghActions.info(`GitHub: check if ${targetYmlFilePath} file already exists...`);
-        const existingFileResponse = yield octokitHandle404_1.octokitHandle404(github.repos.getContents, { owner, repo, path: targetYmlFilePath, ref: 'heads/' + actionInputs_1.actionInputs.targetBranch });
+        const targetOwner = actionInputs_1.actionInputs.targetRepo ? actionInputs_1.actionInputs.targetRepo.owner : owner;
+        const targetRepo = actionInputs_1.actionInputs.targetRepo ? actionInputs_1.actionInputs.targetRepo.repo : repo;
+        ghActions.info(`GitHub: check if ${targetYmlFilePath} file already exists in ` +
+            `${targetOwner}/${targetRepo}@${actionInputs_1.actionInputs.targetBranch}...`);
+        const existingFileResponse = yield octokitHandle404_1.octokitHandle404(github.repos.getContents, {
+            owner: targetOwner,
+            repo: targetRepo,
+            path: targetYmlFilePath,
+            ref: 'heads/' + actionInputs_1.actionInputs.targetBranch
+        });
         const existingSha = existingFileResponse !== undefined
             ? existingFileResponse.data.sha
             : undefined;
@@ -2775,8 +2783,11 @@ function runImpl() {
         ghActions.info(`Reading and modifying ${actionInputs_1.actionInputs.templateYmlFile}...`);
         let workflowContents = fs.readFileSync(actionInputs_1.actionInputs.templateYmlFile, 'utf8');
         workflowContents = modifyScheduledWorkflow_1.modifyScheduledWorkflow(workflowContents, targetYmlFilePath, targetRef, actionInputs_1.actionInputs.addTag !== undefined, actionInputs_1.actionInputs.targetBranch);
-        ghActions.info(`GitHub: Creating ${targetYmlFilePath} workflow file from the template...`);
-        yield github.repos.createOrUpdateFile({ owner, repo,
+        ghActions.info(`GitHub: Creating ${targetYmlFilePath} workflow file from the template in ` +
+            `${targetOwner}/${targetRepo}@${actionInputs_1.actionInputs.targetBranch}...`);
+        yield github.repos.createOrUpdateFile({
+            owner: targetOwner,
+            repo: targetRepo,
             author: {
                 email: consts_1.consts.gitAuthorEmail,
                 name: consts_1.consts.gitAuthorName
@@ -2788,24 +2799,38 @@ function runImpl() {
             sha: existingSha
         });
         if (actionInputs_1.actionInputs.addTag !== undefined) {
-            const tagRef = 'tags/' + actionInputs_1.actionInputs.addTag;
-            ghActions.info(`GitHub: Checking if ${actionInputs_1.actionInputs.addTag} exists...`);
-            const existingTag = yield octokitHandle404_1.octokitHandle404(github.git.getRef, { owner, repo, ref: tagRef });
+            ghActions.info(`GitHub: Checking if ${actionInputs_1.actionInputs.addTag} exists in ` +
+                `${targetOwner}/${targetRepo}@${actionInputs_1.actionInputs.targetBranch}...`);
+            const existingTag = yield octokitHandle404_1.octokitHandle404(github.git.getRef, {
+                owner: targetOwner,
+                repo: targetRepo,
+                ref: 'tags/' + actionInputs_1.actionInputs.addTag
+            });
             if (existingTag !== undefined) {
                 ghActions.info(`Tag found at commit ${existingTag.data.object.sha}`);
                 ghActions.info(`GitHub: Updating ${actionInputs_1.actionInputs.addTag} to sha ${process.env.GITHUB_SHA}...`);
-                yield github.git.updateRef({ owner, repo, ref: tagRef, sha: process.env.GITHUB_SHA });
+                yield github.git.updateRef({
+                    owner: targetOwner,
+                    repo: targetRepo,
+                    ref: 'refs/tags/' + actionInputs_1.actionInputs.addTag,
+                    sha: process.env.GITHUB_SHA
+                });
             }
             else {
-                ghActions.info(`GitHub: Creating ${actionInputs_1.actionInputs.addTag} on sha ${process.env.GITHUB_SHA}...`);
-                yield github.git.createRef({ owner, repo, ref: tagRef, sha: process.env.GITHUB_SHA });
+                ghActions.info(`GitHub: Creating ${actionInputs_1.actionInputs.addTag} tag on sha ${process.env.GITHUB_SHA}...`);
+                yield github.git.createRef({
+                    owner: targetOwner,
+                    repo: targetRepo,
+                    ref: 'refs/tags/' + actionInputs_1.actionInputs.addTag,
+                    sha: process.env.GITHUB_SHA
+                });
             }
         }
         actionOutputs_1.actionOutputs.targetYmlFileName.setValue(targetYmlFileName);
         actionOutputs_1.actionOutputs.targetYmlFilePath.setValue(targetYmlFileAbsPath);
     });
 }
-function isOwnCommit(commit) {
+function isTriggeredByAction(commit) {
     return (commit.commit.author.name === consts_1.consts.gitAuthorName &&
         commit.commit.author.email === consts_1.consts.gitAuthorEmail) ||
         commit.author.login === 'actions-user';
@@ -24901,6 +24926,16 @@ exports.actionInputs = {
     templateYmlFile: github_actions_utils_1.actionInputs.getWsPath('templateYmlFile', true),
     overrideTargetFile: github_actions_utils_1.actionInputs.getBool('overrideTargetFile', true),
     targetYmlFileName: github_actions_utils_1.actionInputs.getString('targetYmlFileName', false),
+    targetRepo: github_actions_utils_1.transformIfSet(github_actions_utils_1.actionInputs.getString('targetRepo', false), s => {
+        const parts = s.split('/');
+        if (parts.length === 2 && parts[0].length > 0 && parts[1].length > 0) {
+            return {
+                owner: parts[0],
+                repo: parts[1]
+            };
+        }
+        throw new Error('Invalid "targetRepo" input format. Should look like: "ownername/reponame"');
+    }),
     targetBranch: github_actions_utils_1.actionInputs.getString('targetBranch', true),
     addTag: github_actions_utils_1.actionInputs.getString('addTag', false)
 };
