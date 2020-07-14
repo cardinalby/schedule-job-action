@@ -2730,6 +2730,7 @@ const modifyScheduledWorkflow_1 = __webpack_require__(916);
 const github_1 = __webpack_require__(469);
 const octokitHandle404_1 = __webpack_require__(176);
 const consts_1 = __webpack_require__(257);
+const githubTagManager_1 = __webpack_require__(553);
 const WORKFLOWS_DIR = '.github/workflows';
 // noinspection JSUnusedLocalSymbols
 function run() {
@@ -2783,48 +2784,35 @@ function runImpl() {
         ghActions.info(`Reading and modifying ${actionInputs_1.actionInputs.templateYmlFile}...`);
         let workflowContents = fs.readFileSync(actionInputs_1.actionInputs.templateYmlFile, 'utf8');
         workflowContents = modifyScheduledWorkflow_1.modifyScheduledWorkflow(workflowContents, targetYmlFilePath, targetRef, actionInputs_1.actionInputs.addTag !== undefined, actionInputs_1.actionInputs.targetBranch);
+        const tagManager = actionInputs_1.actionInputs.addTag !== undefined
+            ? new githubTagManager_1.GithubTagManager(github, targetOwner, targetRepo, actionInputs_1.actionInputs.addTag)
+            : undefined;
+        if (tagManager) {
+            yield tagManager.createOrUpdate(process.env.GITHUB_SHA);
+        }
         ghActions.info(`GitHub: Creating ${targetYmlFilePath} workflow file from the template in ` +
             `${targetOwner}/${targetRepo}@${actionInputs_1.actionInputs.targetBranch}...`);
-        yield github.repos.createOrUpdateFile({
-            owner: targetOwner,
-            repo: targetRepo,
-            author: {
-                email: consts_1.consts.gitAuthorEmail,
-                name: consts_1.consts.gitAuthorName
-            },
-            branch: actionInputs_1.actionInputs.targetBranch,
-            message: `Add delayed ${targetYmlFileName} job`,
-            content: Buffer.from(workflowContents, 'binary').toString('base64'),
-            path: targetYmlFilePath,
-            sha: existingSha
-        });
-        if (actionInputs_1.actionInputs.addTag !== undefined) {
-            ghActions.info(`GitHub: Checking if ${actionInputs_1.actionInputs.addTag} exists in ` +
-                `${targetOwner}/${targetRepo}@${actionInputs_1.actionInputs.targetBranch}...`);
-            const existingTag = yield octokitHandle404_1.octokitHandle404(github.git.getRef, {
+        try {
+            yield github.repos.createOrUpdateFile({
                 owner: targetOwner,
                 repo: targetRepo,
-                ref: 'tags/' + actionInputs_1.actionInputs.addTag
+                author: {
+                    email: consts_1.consts.gitAuthorEmail,
+                    name: consts_1.consts.gitAuthorName
+                },
+                branch: actionInputs_1.actionInputs.targetBranch,
+                message: `Add delayed ${targetYmlFileName} job`,
+                content: Buffer.from(workflowContents, 'binary').toString('base64'),
+                path: targetYmlFilePath,
+                sha: existingSha
             });
-            if (existingTag !== undefined) {
-                ghActions.info(`Tag found at commit ${existingTag.data.object.sha}`);
-                ghActions.info(`GitHub: Updating ${actionInputs_1.actionInputs.addTag} to sha ${process.env.GITHUB_SHA}...`);
-                yield github.git.updateRef({
-                    owner: targetOwner,
-                    repo: targetRepo,
-                    ref: 'refs/tags/' + actionInputs_1.actionInputs.addTag,
-                    sha: process.env.GITHUB_SHA
-                });
+        }
+        catch (e) {
+            ghActions.error('Error creating file: ' + e.message);
+            if (tagManager) {
+                yield tagManager.rollbackAction();
             }
-            else {
-                ghActions.info(`GitHub: Creating ${actionInputs_1.actionInputs.addTag} tag on sha ${process.env.GITHUB_SHA}...`);
-                yield github.git.createRef({
-                    owner: targetOwner,
-                    repo: targetRepo,
-                    ref: 'refs/tags/' + actionInputs_1.actionInputs.addTag,
-                    sha: process.env.GITHUB_SHA
-                });
-            }
+            throw e;
         }
         actionOutputs_1.actionOutputs.targetYmlFileName.setValue(targetYmlFileName);
         actionOutputs_1.actionOutputs.targetYmlFilePath.setValue(targetYmlFileAbsPath);
@@ -24213,6 +24201,132 @@ const getPage = __webpack_require__(265)
 function getNextPage (octokit, link, headers) {
   return getPage(octokit, link, 'next', headers)
 }
+
+
+/***/ }),
+
+/***/ 553:
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.GithubTagManager = void 0;
+const ghActions = __importStar(__webpack_require__(470));
+const octokitHandle404_1 = __webpack_require__(176);
+class GithubTagManager {
+    constructor(github, targetOwner, targetRepo, tagName) {
+        this._github = github;
+        this._targetOwner = targetOwner;
+        this._targetRepo = targetRepo;
+        this._tagName = tagName;
+    }
+    loadExisting() {
+        return __awaiter(this, void 0, void 0, function* () {
+            ghActions.info(`GitHub: Checking if ${this._tagName} exists in ` +
+                `${this._targetOwner}/${this._targetRepo}...`);
+            const tagResponse = yield octokitHandle404_1.octokitHandle404(this._github.git.getRef, {
+                owner: this._targetOwner,
+                repo: this._targetRepo,
+                ref: 'tags/' + this._tagName
+            });
+            if (tagResponse !== undefined) {
+                ghActions.info(`Tag found at commit ${tagResponse.data.object.sha}`);
+                this._existingTag = tagResponse.data;
+            }
+            else {
+                ghActions.info(`Tag doesn't exist`);
+                this._existingTag = false;
+            }
+            return this._existingTag;
+        });
+    }
+    update(sha) {
+        return __awaiter(this, void 0, void 0, function* () {
+            ghActions.info(`GitHub: Updating ${this._tagName} tag to sha ${sha}...`);
+            return this._github.git.updateRef({
+                owner: this._targetOwner,
+                repo: this._targetRepo,
+                ref: 'refs/tags/' + this._tagName,
+                sha
+            });
+        });
+    }
+    create(sha) {
+        return __awaiter(this, void 0, void 0, function* () {
+            ghActions.info(`GitHub: Creating ${this._tagName} tag on sha ${sha}...`);
+            return this._github.git.createRef({
+                owner: this._targetOwner,
+                repo: this._targetRepo,
+                ref: 'refs/tags/' + this._tagName,
+                sha
+            });
+        });
+    }
+    createOrUpdate(sha) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this._existingTag === undefined) {
+                yield this.loadExisting();
+            }
+            if (this._existingTag === false) {
+                return this.create(sha);
+            }
+            return this.update(sha);
+        });
+    }
+    rollbackAction() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this._existingTag === undefined) {
+                return;
+            }
+            if (this._existingTag) {
+                ghActions.info(`GitHub: rolling back ${this._tagName} tag to sha ${this._existingTag.object.sha}...`);
+                yield this._github.git.updateRef({
+                    owner: this._targetOwner,
+                    repo: this._targetRepo,
+                    ref: 'refs/tags/' + this._tagName,
+                    sha: this._existingTag.object.sha
+                });
+                return;
+            }
+            ghActions.info(`GitHub: rolling back: delete ${this._tagName} tag`);
+            yield this._github.git.deleteRef({
+                owner: this._targetOwner,
+                repo: this._targetRepo,
+                ref: 'tags/' + this._tagName,
+            });
+        });
+    }
+}
+exports.GithubTagManager = GithubTagManager;
 
 
 /***/ }),
