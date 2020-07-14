@@ -30,7 +30,7 @@ async function runImpl() {
     const github = new GitHub(actionInputs.ghToken);
 
     const currentCommit = (await github.repos.getCommit({owner, repo, ref: process.env.GITHUB_SHA})).data;
-    if (isOwnCommit(currentCommit)) {
+    if (isTriggeredByAction(currentCommit)) {
         ghActions.info('Commit was triggered by the action, skip to prevent a loop');
         return;
     }
@@ -46,11 +46,20 @@ async function runImpl() {
     const targetYmlFilePath = path.join(WORKFLOWS_DIR, targetYmlFileName);
     const targetYmlFileAbsPath = getWorkspacePath(targetYmlFilePath);
 
-    ghActions.info(`GitHub: check if ${targetYmlFilePath} file already exists...`);
+    const targetOwner = actionInputs.targetRepo ? actionInputs.targetRepo.owner : owner;
+    const targetRepo = actionInputs.targetRepo ? actionInputs.targetRepo.repo : repo;
+
+    ghActions.info(
+        `GitHub: check if ${targetYmlFilePath} file already exists in ` +
+        `${targetOwner}/${targetRepo}@${actionInputs.targetBranch}...`
+    );
     const existingFileResponse = await octokitHandle404(
-        github.repos.getContents,
-        { owner, repo, path: targetYmlFilePath, ref: 'heads/' + actionInputs.targetBranch }
-        );
+        github.repos.getContents, {
+            owner: targetOwner,
+            repo: targetRepo,
+            path: targetYmlFilePath,
+            ref: 'heads/' + actionInputs.targetBranch
+        });
     const existingSha = existingFileResponse !== undefined
         ? (existingFileResponse.data as Octokit.ReposGetContentsResponseItem).sha
         : undefined;
@@ -70,8 +79,13 @@ async function runImpl() {
         actionInputs.targetBranch
     );
 
-    ghActions.info(`GitHub: Creating ${targetYmlFilePath} workflow file from the template...`);
-    await github.repos.createOrUpdateFile({owner, repo,
+    ghActions.info(
+        `GitHub: Creating ${targetYmlFilePath} workflow file from the template in ` +
+        `${targetOwner}/${targetRepo}@${actionInputs.targetBranch}...`
+    );
+    await github.repos.createOrUpdateFile({
+        owner: targetOwner,
+        repo: targetRepo,
         author: {
             email: consts.gitAuthorEmail,
             name: consts.gitAuthorName
@@ -84,16 +98,32 @@ async function runImpl() {
     });
 
     if (actionInputs.addTag !== undefined) {
-        const tagRef = 'tags/' + actionInputs.addTag;
-        ghActions.info(`GitHub: Checking if ${actionInputs.addTag} exists...`);
-        const existingTag = await octokitHandle404(github.git.getRef, {owner, repo, ref: tagRef});
+        ghActions.info(
+            `GitHub: Checking if ${actionInputs.addTag} exists in ` +
+            `${targetOwner}/${targetRepo}@${actionInputs.targetBranch}...`
+        );
+        const existingTag = await octokitHandle404(github.git.getRef, {
+            owner: targetOwner,
+            repo: targetRepo,
+            ref: 'tags/' + actionInputs.addTag
+        });
         if (existingTag !== undefined) {
             ghActions.info(`Tag found at commit ${existingTag.data.object.sha}`);
             ghActions.info(`GitHub: Updating ${actionInputs.addTag} to sha ${process.env.GITHUB_SHA}...`);
-            await github.git.updateRef({owner, repo, ref: tagRef, sha: process.env.GITHUB_SHA});
+            await github.git.updateRef({
+                owner: targetOwner,
+                repo: targetRepo,
+                ref: 'refs/tags/' + actionInputs.addTag,
+                sha: process.env.GITHUB_SHA
+            });
         } else {
-            ghActions.info(`GitHub: Creating ${actionInputs.addTag} on sha ${process.env.GITHUB_SHA}...`);
-            await github.git.createRef({owner, repo, ref: tagRef, sha: process.env.GITHUB_SHA});
+            ghActions.info(`GitHub: Creating ${actionInputs.addTag} tag on sha ${process.env.GITHUB_SHA}...`);
+            await github.git.createRef({
+                owner: targetOwner,
+                repo: targetRepo,
+                ref: 'refs/tags/' + actionInputs.addTag,
+                sha: process.env.GITHUB_SHA
+            });
         }
     }
 
@@ -101,7 +131,7 @@ async function runImpl() {
     actionOutputs.targetYmlFilePath.setValue(targetYmlFileAbsPath);
 }
 
-function isOwnCommit(commit: Octokit.ReposGetCommitResponse): boolean {
+function isTriggeredByAction(commit: Octokit.ReposGetCommitResponse): boolean {
     return (commit.commit.author.name === consts.gitAuthorName &&
         commit.commit.author.email === consts.gitAuthorEmail) ||
         commit.author.login === 'actions-user';

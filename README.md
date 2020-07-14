@@ -18,11 +18,11 @@ Override yml file if exists. If `false` and file exists, action will fail.
 * `targetYmlFileName` Default: `templateYmlFile`'s name + sha/tag + `.yml`<br>
 Target yml file name in `.github/workflows` folder
 
+* `targetRepo` Default: current repository<br>
+Repository to add the delayed workflow to. Format: `owner-name/repo-name`
+
 * `targetBranch` Default: `master`<br>
 Branch to push. Please note, scheduled jobs work only in the default branch.
-
-* `pushForce` Default: `true`<br>
-Perform `git push` with `--force` flag
 
 * `addTag`<br>
 Specify a tag to schedule job for. Will be used as a ref in the checkout step instead of commit sha.

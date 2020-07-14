@@ -15,6 +15,9 @@ inputs:
   targetYmlFileName:
     description: 'Name of target yml file to create in .github/workflows dir'
     required: false
+  targetRepo:
+    description: 'Repository to add the delayed workflow to. Format: owner-name/repo-name'
+    required: false
   targetBranch:
     description: 'Branch to push changes'
     required: false
