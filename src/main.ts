@@ -69,7 +69,7 @@ async function runImpl() {
         },
         branch: actionInputs.targetBranch,
         message: `Add delayed ${targetYmlFileName} job`,
-        content: btoa(workflowContents),
+        content: Buffer.from(workflowContents, 'binary').toString('base64'),
         path: targetYmlFilePath,
         sha: existingSha
     });
