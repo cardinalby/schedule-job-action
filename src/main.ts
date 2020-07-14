@@ -45,6 +45,7 @@ async function runImpl() {
     const targetYmlFilePath = path.join(WORKFLOWS_DIR, targetYmlFileName);
     const targetYmlFileAbsPath = getWorkspacePath(targetYmlFilePath);
 
+    ghActions.info(`GitHub: check if ${targetYmlFilePath} file already exists...`);
     const existingFileResponse = await octokitHandle404(
         github.repos.getContents,
         {owner, repo, path: targetYmlFilePath}
@@ -52,9 +53,10 @@ async function runImpl() {
     const existingSha = existingFileResponse !== undefined
         ? (existingFileResponse.data as Octokit.ReposGetContentsResponseItem).sha
         : undefined;
+    ghActions.info(existingSha ? `File found: ${existingSha}` : `File not found`);
 
     if (existingSha && !actionInputs.overrideTargetFile) {
-        throw new Error(`${targetYmlFilePath} file already exists!`);
+        throw new Error(`${targetYmlFilePath} file already exists but overrideTargetFile is false!`);
     }
 
     ghActions.info(`Reading and modifying ${actionInputs.templateYmlFile}...`);
@@ -63,6 +65,7 @@ async function runImpl() {
         workflowContents, targetYmlFilePath, targetRef, actionInputs.addTag !== undefined
     );
 
+    ghActions.info(`GitHub: Creating ${targetYmlFilePath} workflow file from the template...`);
     await github.repos.createOrUpdateFile({owner, repo,
         author: {
             email: actionInputs.gitUserEmail,
@@ -77,10 +80,14 @@ async function runImpl() {
 
     if (actionInputs.addTag !== undefined) {
         const tagRef = 'tags/' + actionInputs.addTag;
+        ghActions.info(`GitHub: Checking if ${actionInputs.addTag} exists...`);
         const existingTag = await octokitHandle404(github.git.getRef, {owner, repo, ref: tagRef});
         if (existingTag !== undefined) {
+            ghActions.info(`Tag found at commit ${existingTag.data.object.sha}`);
+            ghActions.info(`GitHub: Updating ${actionInputs.addTag} to sha ${process.env.GITHUB_SHA}...`);
             await github.git.updateRef({owner, repo, ref: tagRef, sha: process.env.GITHUB_SHA});
         } else {
+            ghActions.info(`GitHub: Creating ${actionInputs.addTag} on sha ${process.env.GITHUB_SHA}...`);
             await github.git.createRef({owner, repo, ref: tagRef, sha: process.env.GITHUB_SHA});
         }
     }
