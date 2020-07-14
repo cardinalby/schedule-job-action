@@ -2729,6 +2729,7 @@ const path = __importStar(__webpack_require__(622));
 const modifyScheduledWorkflow_1 = __webpack_require__(916);
 const github_1 = __webpack_require__(469);
 const octokitHandle404_1 = __webpack_require__(176);
+const consts_1 = __webpack_require__(257);
 const WORKFLOWS_DIR = '.github/workflows';
 // noinspection JSUnusedLocalSymbols
 function run() {
@@ -2763,7 +2764,7 @@ function runImpl() {
         const targetYmlFilePath = path.join(WORKFLOWS_DIR, targetYmlFileName);
         const targetYmlFileAbsPath = github_actions_utils_1.getWorkspacePath(targetYmlFilePath);
         ghActions.info(`GitHub: check if ${targetYmlFilePath} file already exists...`);
-        const existingFileResponse = yield octokitHandle404_1.octokitHandle404(github.repos.getContents, { owner, repo, path: targetYmlFilePath });
+        const existingFileResponse = yield octokitHandle404_1.octokitHandle404(github.repos.getContents, { owner, repo, path: targetYmlFilePath, ref: 'heads/' + actionInputs_1.actionInputs.targetBranch });
         const existingSha = existingFileResponse !== undefined
             ? existingFileResponse.data.sha
             : undefined;
@@ -2773,12 +2774,12 @@ function runImpl() {
         }
         ghActions.info(`Reading and modifying ${actionInputs_1.actionInputs.templateYmlFile}...`);
         let workflowContents = fs.readFileSync(actionInputs_1.actionInputs.templateYmlFile, 'utf8');
-        workflowContents = modifyScheduledWorkflow_1.modifyScheduledWorkflow(workflowContents, targetYmlFilePath, targetRef, actionInputs_1.actionInputs.addTag !== undefined);
+        workflowContents = modifyScheduledWorkflow_1.modifyScheduledWorkflow(workflowContents, targetYmlFilePath, targetRef, actionInputs_1.actionInputs.addTag !== undefined, actionInputs_1.actionInputs.targetBranch);
         ghActions.info(`GitHub: Creating ${targetYmlFilePath} workflow file from the template...`);
         yield github.repos.createOrUpdateFile({ owner, repo,
             author: {
-                email: actionInputs_1.actionInputs.gitUserEmail,
-                name: actionInputs_1.actionInputs.gitUserName
+                email: consts_1.consts.gitAuthorEmail,
+                name: consts_1.consts.gitAuthorName
             },
             branch: actionInputs_1.actionInputs.targetBranch,
             message: `Add delayed ${targetYmlFileName} job`,
@@ -2805,8 +2806,8 @@ function runImpl() {
     });
 }
 function isOwnCommit(commit) {
-    return (commit.commit.author.name === actionInputs_1.actionInputs.gitUserName &&
-        commit.commit.author.email === actionInputs_1.actionInputs.gitUserEmail) ||
+    return (commit.commit.author.name === consts_1.consts.gitAuthorName &&
+        commit.commit.author.email === consts_1.consts.gitAuthorEmail) ||
         commit.author.login === 'actions-user';
 }
 function getTargetYmlFileName(targetRef) {
@@ -16086,6 +16087,21 @@ exports.restEndpointMethods = restEndpointMethods;
 
 /***/ }),
 
+/***/ 257:
+/***/ (function(__unusedmodule, exports) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.consts = void 0;
+exports.consts = {
+    gitAuthorName: 'GitHub Action',
+    gitAuthorEmail: 'action@github.com'
+};
+
+
+/***/ }),
+
 /***/ 260:
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
@@ -24886,13 +24902,7 @@ exports.actionInputs = {
     overrideTargetFile: github_actions_utils_1.actionInputs.getBool('overrideTargetFile', true),
     targetYmlFileName: github_actions_utils_1.actionInputs.getString('targetYmlFileName', false),
     targetBranch: github_actions_utils_1.actionInputs.getString('targetBranch', true),
-    pushForce: github_actions_utils_1.actionInputs.getBool('pushForce', true),
-    addTag: github_actions_utils_1.actionInputs.getString('addTag', false),
-    gitUserEmail: github_actions_utils_1.actionInputs.getString('gitUserEmail', true),
-    gitUserName: github_actions_utils_1.actionInputs.getString('gitUserName', true),
-    envNewYmlFilePathVariable: github_actions_utils_1.actionInputs.getString('envNewYmlFilePathVariable', true),
-    envRefVariable: github_actions_utils_1.actionInputs.getString('envRefVariable', true),
-    envRefIsTagVariable: github_actions_utils_1.actionInputs.getString('envRefIsTagVariable', true)
+    addTag: github_actions_utils_1.actionInputs.getString('addTag', false)
 };
 
 
@@ -29477,8 +29487,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.modifyScheduledWorkflow = void 0;
 const yaml = __importStar(__webpack_require__(414));
 const ghActions = __importStar(__webpack_require__(470));
-const actionInputs_1 = __webpack_require__(638);
-function modifyScheduledWorkflow(workflowContents, relativeFilePath, envRef, isTag) {
+function modifyScheduledWorkflow(workflowContents, relativeFilePath, envRef, isTag, unscheduleTargetBranch) {
     const loadedYml = yaml.safeLoad(workflowContents);
     if (typeof loadedYml !== 'object') {
         throw new Error(`Error parsing workflow yml`);
@@ -29500,9 +29509,10 @@ function modifyScheduledWorkflow(workflowContents, relativeFilePath, envRef, isT
         envObj[name] = value;
         ghActions.info(`${name}=${value}`);
     };
-    addEnv(job.env, actionInputs_1.actionInputs.envRefVariable, envRef);
-    addEnv(job.env, actionInputs_1.actionInputs.envRefIsTagVariable, isTag ? 'true' : 'false');
-    addEnv(job.env, actionInputs_1.actionInputs.envNewYmlFilePathVariable, relativeFilePath);
+    addEnv(job.env, 'DELAYED_JOB_CHECKOUT_REF', envRef);
+    addEnv(job.env, 'DELAYED_JOB_CHECKOUT_REF_IS_TAG', isTag ? 'true' : 'false');
+    addEnv(job.env, 'DELAYED_JOB_WORKFLOW_FILE_PATH', relativeFilePath);
+    addEnv(job.env, 'DELAYED_JOB_WORKFLOW_UNSCHEDULE_TARGET_BRANCH', unscheduleTargetBranch);
     return yaml.safeDump(workflow);
 }
 exports.modifyScheduledWorkflow = modifyScheduledWorkflow;
