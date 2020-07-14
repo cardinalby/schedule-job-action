@@ -2521,6 +2521,40 @@ module.exports = opts => {
 
 /***/ }),
 
+/***/ 176:
+/***/ (function(__unusedmodule, exports) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.octokitHandle404 = void 0;
+function octokitHandle404(func, params) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            return yield func(params);
+        }
+        catch (e) {
+            if (e.status === 404) {
+                return undefined;
+            }
+            throw e;
+        }
+    });
+}
+exports.octokitHandle404 = octokitHandle404;
+
+
+/***/ }),
+
 /***/ 190:
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
@@ -2694,6 +2728,7 @@ const fs = __importStar(__webpack_require__(747));
 const path = __importStar(__webpack_require__(622));
 const modifyScheduledWorkflow_1 = __webpack_require__(916);
 const github_1 = __webpack_require__(469);
+const octokitHandle404_1 = __webpack_require__(176);
 const WORKFLOWS_DIR = '.github/workflows';
 // noinspection JSUnusedLocalSymbols
 function run() {
@@ -2708,14 +2743,15 @@ function run() {
 }
 function runImpl() {
     return __awaiter(this, void 0, void 0, function* () {
-        if (process.env.GITHUB_ACTOR === undefined) {
-            throw new Error('GITHUB_ACTOR env variable is not set');
-        }
         if (process.env.GITHUB_SHA === undefined) {
             throw new Error('GITHUB_SHA env variable is not set');
         }
-        if (process.env.GITHUB_REPOSITORY === undefined) {
-            throw new Error('GITHUB_REPOSITORY env variable is not set');
+        const { owner, repo } = github_1.context.repo;
+        const github = new github_1.GitHub(actionInputs_1.actionInputs.ghToken);
+        const currentCommit = (yield github.repos.getCommit({ owner, repo, ref: process.env.GITHUB_SHA })).data;
+        if (isOwnCommit(currentCommit)) {
+            ghActions.info('Commit was triggered by the action, skip to prevent a loop');
+            return;
         }
         if (!fs.existsSync(actionInputs_1.actionInputs.templateYmlFile)) {
             throw new Error(`${actionInputs_1.actionInputs.templateYmlFile} file doesn't exist`);
@@ -2726,19 +2762,11 @@ function runImpl() {
         const targetYmlFileName = getTargetYmlFileName(targetRef);
         const targetYmlFilePath = path.join(WORKFLOWS_DIR, targetYmlFileName);
         const targetYmlFileAbsPath = github_actions_utils_1.getWorkspacePath(targetYmlFilePath);
-        const { owner, repo } = github_1.context.repo;
-        const github = new github_1.GitHub(actionInputs_1.actionInputs.ghToken);
-        let existingSha;
-        try {
-            const existingFileResponse = yield github.repos.getContents({ owner, repo, path: targetYmlFilePath });
-            existingSha = existingFileResponse.data.sha;
-        }
-        catch (e) {
-            if (e.status !== 404) {
-                throw e;
-            }
-        }
-        if (!actionInputs_1.actionInputs.overrideTargetFile && existingSha) {
+        const existingFileResponse = yield octokitHandle404_1.octokitHandle404(github.repos.getContents, { owner, repo, path: targetYmlFilePath });
+        const existingSha = existingFileResponse !== undefined
+            ? existingFileResponse.data.sha
+            : undefined;
+        if (existingSha && !actionInputs_1.actionInputs.overrideTargetFile) {
             throw new Error(`${targetYmlFilePath} file already exists!`);
         }
         ghActions.info(`Reading and modifying ${actionInputs_1.actionInputs.templateYmlFile}...`);
@@ -2755,45 +2783,24 @@ function runImpl() {
             path: targetYmlFilePath,
             sha: existingSha
         });
-        // const blob = (await github.git.createBlob({ owner, repo, content: workflowContents })).data;
-        // ghActions.info(`Requesting a tree with sha = ${process.env.GITHUB_SHA}...`);
-        // const tree = (await github.git.getTree({ owner, repo, tree_sha: process.env.GITHUB_SHA })).data;
-        // console.log(tree);
-        //
-        // ghActions.info(`Creating new tree...`);
-        // const newTree = (await github.git.createTree({owner, repo, base_tree: tree.sha, tree: [{
-        //         content: workflowContents,
-        //         mode: "100644",
-        //         path: targetYmlFilePath,
-        //         type: "blob"
-        //     }]})).data;
-        // console.log(newTree);
-        //
-        // ghActions.info(`Creating commit with new tree...`);
-        // const commit = (await github.git.createCommit({owner, repo,
-        //     parents: [ process.env.GITHUB_SHA ],
-        //     tree: newTree.sha,
-        //     message: `Add delayed ${targetYmlFileName} job`,
-        //     author: {
-        //         email: actionInputs.gitUserEmail,
-        //         name: actionInputs.gitUserName
-        //     }
-        // })).data;
-        // console.log(commit);
-        //
-        // ghActions.info(`Updating ref: heads/${actionInputs.targetBranch}...`);
-        // await github.git.updateRef({owner, repo,
-        //     ref: 'heads/' + actionInputs.targetBranch,
-        //     sha: commit.sha,
-        //     force: actionInputs.pushForce
-        // });
         if (actionInputs_1.actionInputs.addTag !== undefined) {
-            // github.git.createTag({owner, repo, });
-            // await git.addTag(actionInputs.addTag);
+            const tagRef = 'tags/' + actionInputs_1.actionInputs.addTag;
+            const existingTag = yield octokitHandle404_1.octokitHandle404(github.git.getRef, { owner, repo, ref: tagRef });
+            if (existingTag !== undefined) {
+                yield github.git.updateRef({ owner, repo, ref: tagRef, sha: process.env.GITHUB_SHA });
+            }
+            else {
+                yield github.git.createRef({ owner, repo, ref: tagRef, sha: process.env.GITHUB_SHA });
+            }
         }
         actionOutputs_1.actionOutputs.targetYmlFileName.setValue(targetYmlFileName);
         actionOutputs_1.actionOutputs.targetYmlFilePath.setValue(targetYmlFileAbsPath);
     });
+}
+function isOwnCommit(commit) {
+    return (commit.commit.author.name === actionInputs_1.actionInputs.gitUserName &&
+        commit.commit.author.email === actionInputs_1.actionInputs.gitUserEmail) ||
+        commit.author.login === 'actions-user';
 }
 function getTargetYmlFileName(targetRef) {
     if (actionInputs_1.actionInputs.targetYmlFileName !== undefined) {
