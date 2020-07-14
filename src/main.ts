@@ -9,6 +9,7 @@ import { context, GitHub } from "@actions/github";
 import { Octokit } from '@octokit/rest';
 import {octokitHandle404} from "./octokitHandle404";
 import {consts} from "./consts";
+import {GithubTagManager} from "./githubTagManager";
 
 const WORKFLOWS_DIR = '.github/workflows';
 
@@ -79,52 +80,37 @@ async function runImpl() {
         actionInputs.targetBranch
     );
 
+    const tagManager = actionInputs.addTag !== undefined
+        ? new GithubTagManager(github, targetOwner, targetRepo, actionInputs.addTag)
+        : undefined;
+    if (tagManager) {
+        await tagManager.createOrUpdate(process.env.GITHUB_SHA);
+    }
+
     ghActions.info(
         `GitHub: Creating ${targetYmlFilePath} workflow file from the template in ` +
         `${targetOwner}/${targetRepo}@${actionInputs.targetBranch}...`
     );
-    await github.repos.createOrUpdateFile({
-        owner: targetOwner,
-        repo: targetRepo,
-        author: {
-            email: consts.gitAuthorEmail,
-            name: consts.gitAuthorName
-        },
-        branch: actionInputs.targetBranch,
-        message: `Add delayed ${targetYmlFileName} job`,
-        content: Buffer.from(workflowContents, 'binary').toString('base64'),
-        path: targetYmlFilePath,
-        sha: existingSha
-    });
-
-    if (actionInputs.addTag !== undefined) {
-        ghActions.info(
-            `GitHub: Checking if ${actionInputs.addTag} exists in ` +
-            `${targetOwner}/${targetRepo}@${actionInputs.targetBranch}...`
-        );
-        const existingTag = await octokitHandle404(github.git.getRef, {
+    try {
+        await github.repos.createOrUpdateFile({
             owner: targetOwner,
             repo: targetRepo,
-            ref: 'tags/' + actionInputs.addTag
+            author: {
+                email: consts.gitAuthorEmail,
+                name: consts.gitAuthorName
+            },
+            branch: actionInputs.targetBranch,
+            message: `Add delayed ${targetYmlFileName} job`,
+            content: Buffer.from(workflowContents, 'binary').toString('base64'),
+            path: targetYmlFilePath,
+            sha: existingSha
         });
-        if (existingTag !== undefined) {
-            ghActions.info(`Tag found at commit ${existingTag.data.object.sha}`);
-            ghActions.info(`GitHub: Updating ${actionInputs.addTag} to sha ${process.env.GITHUB_SHA}...`);
-            await github.git.updateRef({
-                owner: targetOwner,
-                repo: targetRepo,
-                ref: 'refs/tags/' + actionInputs.addTag,
-                sha: process.env.GITHUB_SHA
-            });
-        } else {
-            ghActions.info(`GitHub: Creating ${actionInputs.addTag} tag on sha ${process.env.GITHUB_SHA}...`);
-            await github.git.createRef({
-                owner: targetOwner,
-                repo: targetRepo,
-                ref: 'refs/tags/' + actionInputs.addTag,
-                sha: process.env.GITHUB_SHA
-            });
+    } catch (e) {
+        ghActions.error('Error creating file: ' + e.message);
+        if (tagManager) {
+            await tagManager.rollbackAction();
         }
+        throw e;
     }
 
     actionOutputs.targetYmlFileName.setValue(targetYmlFileName);
