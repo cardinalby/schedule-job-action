@@ -39,7 +39,7 @@ export function modifyScheduledWorkflow(
     if (job.env === undefined) {
         job.env = {};
     }
-    ghActions.info(`Adding env variables to ${job} job...`);
+    ghActions.info(`Adding env variables to ${jobName} job...`);
 
     const addEnv = (envObj: { [n: string]: string }, name: string, value: string) => {
         envObj[name] = value;

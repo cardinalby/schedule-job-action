@@ -43,7 +43,8 @@ export class GithubTagManager {
         return this._github.git.updateRef({
             owner: this._targetOwner,
             repo: this._targetRepo,
-            ref: 'refs/tags/' + this._tagName,
+            ref: 'tags/' + this._tagName,
+            force: true,
             sha
         });
     }
