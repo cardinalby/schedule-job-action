@@ -24275,7 +24275,8 @@ class GithubTagManager {
             return this._github.git.updateRef({
                 owner: this._targetOwner,
                 repo: this._targetRepo,
-                ref: 'refs/tags/' + this._tagName,
+                ref: 'tags/' + this._tagName,
+                force: true,
                 sha
             });
         });
@@ -29654,7 +29655,7 @@ function modifyScheduledWorkflow(workflowContents, relativeFilePath, envRef, isT
     if (job.env === undefined) {
         job.env = {};
     }
-    ghActions.info(`Adding env variables to ${job} job...`);
+    ghActions.info(`Adding env variables to ${jobName} job...`);
     const addEnv = (envObj, name, value) => {
         envObj[name] = value;
         ghActions.info(`${name}=${value}`);
