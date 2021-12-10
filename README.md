@@ -131,7 +131,7 @@ Specify a tag to schedule job for. Will be used as a ref in the checkout step in
 Optional, pass a string to `DELAYED_JOB_PAYLOAD` env variable in delayed workflow file.
 
 * `copyEnvVariables`<br>
-Names of env variables that should be set in `env` section of scheduled workflow jobs. Values
+Names of env variables (whitespace separated) that should be set in `env` section of scheduled workflow jobs. Values
 will be given from env variables of the step where this action called. <br>
 **Be aware!** Do not expose variables with secret values. 
 
