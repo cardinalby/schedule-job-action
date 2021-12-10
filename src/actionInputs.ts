@@ -20,6 +20,10 @@ export const actionInputs = {
         ),
     targetBranch: inputs.getString('targetBranch', true),
     jobPayload: inputs.getString('jobPayload', false),
-    addTag: inputs.getString('addTag', false)
+    addTag: inputs.getString('addTag', false),
+    copyEnvVariables: transformIfSet<string, string[]>(
+        inputs.getString('copyEnvVariables', false),
+        s => s.split(/\s+/).filter(s => s.length > 0)
+    )
 }
 

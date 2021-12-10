@@ -78,7 +78,8 @@ async function runImpl() {
         targetRef,
         actionInputs.addTag !== undefined,
         actionInputs.targetBranch,
-        actionInputs.jobPayload
+        actionInputs.jobPayload,
+        actionInputs.copyEnvVariables
     );
 
     const tagManager = actionInputs.addTag !== undefined
