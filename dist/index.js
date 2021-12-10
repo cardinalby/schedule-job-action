@@ -2688,7 +2688,7 @@ function runImpl() {
         }
         ghActions.info(`Reading and modifying ${actionInputs_1.actionInputs.templateYmlFile}...`);
         let workflowContents = fs.readFileSync(actionInputs_1.actionInputs.templateYmlFile, 'utf8');
-        workflowContents = modifyScheduledWorkflow_1.modifyScheduledWorkflow(workflowContents, targetYmlFilePath, targetRef, actionInputs_1.actionInputs.addTag !== undefined, actionInputs_1.actionInputs.targetBranch, actionInputs_1.actionInputs.jobPayload);
+        workflowContents = modifyScheduledWorkflow_1.modifyScheduledWorkflow(workflowContents, targetYmlFilePath, targetRef, actionInputs_1.actionInputs.addTag !== undefined, actionInputs_1.actionInputs.targetBranch, actionInputs_1.actionInputs.jobPayload, actionInputs_1.actionInputs.copyEnvVariables);
         const tagManager = actionInputs_1.actionInputs.addTag !== undefined
             ? new githubTagManager_1.GithubTagManager(github, targetOwner, targetRepo, actionInputs_1.actionInputs.addTag)
             : undefined;
@@ -24869,7 +24869,8 @@ exports.actionInputs = {
     }),
     targetBranch: github_actions_utils_1.actionInputs.getString('targetBranch', true),
     jobPayload: github_actions_utils_1.actionInputs.getString('jobPayload', false),
-    addTag: github_actions_utils_1.actionInputs.getString('addTag', false)
+    addTag: github_actions_utils_1.actionInputs.getString('addTag', false),
+    copyEnvVariables: github_actions_utils_1.transformIfSet(github_actions_utils_1.actionInputs.getString('copyEnvVariables', false), s => s.split(/\s+/).filter(s => s.length > 0))
 };
 
 
@@ -29458,7 +29459,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.modifyScheduledWorkflow = void 0;
 const yaml = __importStar(__webpack_require__(414));
 const ghActions = __importStar(__webpack_require__(470));
-function modifyScheduledWorkflow(workflowContents, relativeFilePath, envRef, isTag, unscheduleTargetBranch, jobPayload) {
+function modifyScheduledWorkflow(workflowContents, relativeFilePath, envRef, isTag, unscheduleTargetBranch, jobPayload, copyEnvVariables) {
     const loadedYml = yaml.safeLoad(workflowContents);
     if (typeof loadedYml !== 'object') {
         throw new Error(`Error parsing workflow yml`);
@@ -29467,25 +29468,35 @@ function modifyScheduledWorkflow(workflowContents, relativeFilePath, envRef, isT
     if (typeof workflow.jobs !== 'object' || Object.keys(workflow.jobs).length < 1) {
         throw new Error('Job definition not found');
     }
-    if (Object.keys(workflow.jobs).length > 1) {
-        throw new Error('Multiple job definitions found');
-    }
-    const jobName = Object.keys(workflow.jobs)[0];
-    const job = workflow.jobs[jobName];
-    if (job.env === undefined) {
-        job.env = {};
-    }
-    ghActions.info(`Adding env variables to ${jobName} job...`);
-    const addEnv = (envObj, name, value) => {
-        envObj[name] = value;
-        ghActions.info(`${name}=${value}`);
-    };
-    addEnv(job.env, 'DELAYED_JOB_CHECKOUT_REF', envRef);
-    addEnv(job.env, 'DELAYED_JOB_CHECKOUT_REF_IS_TAG', isTag ? 'true' : 'false');
-    addEnv(job.env, 'DELAYED_JOB_WORKFLOW_FILE_PATH', relativeFilePath);
-    addEnv(job.env, 'DELAYED_JOB_WORKFLOW_UNSCHEDULE_TARGET_BRANCH', unscheduleTargetBranch);
-    if (jobPayload !== undefined) {
-        addEnv(job.env, 'DELAYED_JOB_PAYLOAD', jobPayload);
+    for (let jobName of Object.keys(workflow.jobs)) {
+        const job = workflow.jobs[jobName];
+        if (job.env === undefined) {
+            job.env = {};
+        }
+        ghActions.info(`Adding DELAYED_JOB_* env variables to ${jobName} job...`);
+        const addEnv = (envObj, name, value) => {
+            envObj[name] = value;
+            ghActions.info(`${name}=${value}`);
+        };
+        addEnv(job.env, 'DELAYED_JOB_CHECKOUT_REF', envRef);
+        addEnv(job.env, 'DELAYED_JOB_CHECKOUT_REF_IS_TAG', isTag ? 'true' : 'false');
+        addEnv(job.env, 'DELAYED_JOB_WORKFLOW_FILE_PATH', relativeFilePath);
+        addEnv(job.env, 'DELAYED_JOB_WORKFLOW_UNSCHEDULE_TARGET_BRANCH', unscheduleTargetBranch);
+        if (jobPayload !== undefined) {
+            addEnv(job.env, 'DELAYED_JOB_PAYLOAD', jobPayload);
+        }
+        if (copyEnvVariables) {
+            for (let varNameToCopy of copyEnvVariables) {
+                const processEnvValue = process.env[varNameToCopy];
+                if (processEnvValue !== undefined) {
+                    job.env[varNameToCopy] = processEnvValue;
+                    ghActions.info(`${varNameToCopy}=${processEnvValue}`);
+                }
+                else {
+                    ghActions.warning(`${varNameToCopy} is not set`);
+                }
+            }
+        }
     }
     return yaml.safeDump(workflow);
 }
