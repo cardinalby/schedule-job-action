@@ -1,13 +1,12 @@
-import {Octokit} from "@octokit/rest";
+import { OctokitResponse, RequestError } from '@octokit/types';
 
-export async function octokitHandle404<TRequestParams, TResponse>(
-    func: (params?: Octokit.RequestOptions & TRequestParams) => Promise<Octokit.Response<TResponse>>,
-    params: TRequestParams
-): Promise<Octokit.Response<TResponse>|undefined> {
+export async function octokitHandle404<T, S extends number = number>(
+    promise: Promise<OctokitResponse<T, S>>
+): Promise<OctokitResponse<T, S>|undefined> {
     try {
-        return await func(params);
+        return await promise;
     } catch (e) {
-        if (e.status === 404) {
+        if ((e as RequestError).status === 404) {
             return undefined;
         }
         throw e;

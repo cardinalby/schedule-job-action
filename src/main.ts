@@ -5,8 +5,10 @@ import { getWorkspacePath } from "github-actions-utils";
 import * as fs from "fs";
 import * as path from "path";
 import { modifyScheduledWorkflow } from "./modifyScheduledWorkflow";
-import { context, GitHub } from "@actions/github";
+import { context } from "@actions/github";
+import { createTokenAuth } from '@octokit/auth-token';
 import { Octokit } from '@octokit/rest';
+import {components as OctokitTypes} from "@octokit/openapi-types/types";
 import {octokitHandle404} from "./octokitHandle404";
 import {consts} from "./consts";
 import {GithubTagManager} from "./githubTagManager";
@@ -28,9 +30,10 @@ async function runImpl() {
     }
 
     const {owner, repo} = context.repo;
-    const github = new GitHub(actionInputs.ghToken);
+    const octokit = new Octokit({authStrategy: createTokenAuth, auth: actionInputs.ghToken});
 
-    const currentCommit = (await github.repos.getCommit({owner, repo, ref: process.env.GITHUB_SHA})).data;
+    const currentCommit = (await octokit.rest.repos.getCommit({owner, repo, ref: process.env.GITHUB_SHA})).data;
+    currentCommit.commit
     if (isTriggeredByAction(currentCommit)) {
         ghActions.info('Commit was triggered by the action, skip to prevent a loop');
         return;
@@ -50,20 +53,28 @@ async function runImpl() {
     const targetOwner = actionInputs.targetRepo ? actionInputs.targetRepo.owner : owner;
     const targetRepo = actionInputs.targetRepo ? actionInputs.targetRepo.repo : repo;
 
+    let targetBranch = actionInputs.targetBranch;
+    if (targetBranch === undefined) {
+        ghActions.info('Finding out repository default branch...');
+        const targetBranchResponse = octokit.rest.repos.get({
+            owner: targetOwner,
+            repo: targetRepo
+        });
+        targetBranch = (await targetBranchResponse).data.default_branch;
+    }
+
     ghActions.info(
         `GitHub: check if ${targetYmlFilePath} file already exists in ` +
-        `${targetOwner}/${targetRepo}@${actionInputs.targetBranch}...`
+        `${targetOwner}/${targetRepo}@${targetBranch}...`
     );
     const existingFileResponse = await octokitHandle404(
-        github.repos.getContents, {
+        octokit.rest.repos.getContent({
             owner: targetOwner,
             repo: targetRepo,
             path: targetYmlFilePath,
-            ref: 'heads/' + actionInputs.targetBranch
-        });
-    const existingSha = existingFileResponse !== undefined
-        ? (existingFileResponse.data as Octokit.ReposGetContentsResponseItem).sha
-        : undefined;
+            ref: 'heads/' + targetBranch
+        }));
+    const existingSha = (existingFileResponse?.data as OctokitTypes["schemas"]["content-file"]).sha;
     ghActions.info(existingSha ? `File found: ${existingSha}` : `File not found`);
 
     if (existingSha && !actionInputs.overrideTargetFile) {
@@ -77,13 +88,13 @@ async function runImpl() {
         targetYmlFilePath,
         targetRef,
         actionInputs.addTag !== undefined,
-        actionInputs.targetBranch,
+        targetBranch,
         actionInputs.jobPayload,
         actionInputs.copyEnvVariables
     );
 
     const tagManager = actionInputs.addTag !== undefined
-        ? new GithubTagManager(github, targetOwner, targetRepo, actionInputs.addTag)
+        ? new GithubTagManager(octokit, targetOwner, targetRepo, actionInputs.addTag)
         : undefined;
     if (tagManager) {
         await tagManager.createOrUpdate(process.env.GITHUB_SHA);
@@ -94,7 +105,7 @@ async function runImpl() {
         `${targetOwner}/${targetRepo}@${actionInputs.targetBranch}...`
     );
     try {
-        await github.repos.createOrUpdateFile({
+        await octokit.rest.repos.createOrUpdateFileContents({
             owner: targetOwner,
             repo: targetRepo,
             author: {
@@ -119,10 +130,10 @@ async function runImpl() {
     actionOutputs.targetYmlFilePath.setValue(targetYmlFileAbsPath);
 }
 
-function isTriggeredByAction(commit: Octokit.ReposGetCommitResponse): boolean {
-    return (commit.commit.author.name === consts.gitAuthorName &&
+function isTriggeredByAction(commit: OctokitTypes['schemas']['commit']): boolean {
+    return (commit.commit.author?.name === consts.gitAuthorName &&
         commit.commit.author.email === consts.gitAuthorEmail) ||
-        commit.author.login === 'actions-user';
+        commit.author?.login === 'actions-user';
 }
 
 function getTargetYmlFileName(targetRef: string): string {

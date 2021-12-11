@@ -18,7 +18,7 @@ export const actionInputs = {
             throw new Error('Invalid "targetRepo" input format. Should look like: "ownername/reponame"');
         }
         ),
-    targetBranch: inputs.getString('targetBranch', true),
+    targetBranch: inputs.getString('targetBranch', false),
     jobPayload: inputs.getString('jobPayload', false),
     addTag: inputs.getString('addTag', false),
     copyEnvVariables: transformIfSet<string, string[]>(

@@ -19,9 +19,8 @@ inputs:
     description: 'Repository to add the delayed workflow to. Format: owner-name/repo-name'
     required: false
   targetBranch:
-    description: 'Branch to push changes'
+    description: 'Branch to push changes. If not specified, repository default branch is used'
     required: false
-    default: 'master'
   pushForce:
     description: 'Perform push with force flag'
     required: false
