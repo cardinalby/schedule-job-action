@@ -32,8 +32,10 @@ async function runImpl() {
     const {owner, repo} = context.repo;
     const octokit = new Octokit({auth: actionInputs.ghToken});
 
-    const currentCommit = (await octokit.rest.repos.getCommit({owner, repo, ref: process.env.GITHUB_SHA})).data;
-    currentCommit.commit
+    const currentCommit = (await octokit.rest.repos.getCommit({owner, repo, ref: process.env.GITHUB_SHA}))?.data;
+    if (!currentCommit) {
+        throw new Error(`Commit ${process.env.GITHUB_SHA} not found`);
+    }
     if (isTriggeredByAction(currentCommit)) {
         ghActions.info('Commit was triggered by the action, skip to prevent a loop');
         return;
@@ -74,7 +76,7 @@ async function runImpl() {
             path: targetYmlFilePath,
             ref: 'heads/' + targetBranch
         }));
-    const existingSha = (existingFileResponse?.data as OctokitTypes["schemas"]["content-file"]).sha;
+    const existingSha = (existingFileResponse?.data as OctokitTypes["schemas"]["content-file"]|undefined)?.sha;
     ghActions.info(existingSha ? `File found: ${existingSha}` : `File not found`);
 
     if (existingSha && !actionInputs.overrideTargetFile) {
@@ -148,4 +150,4 @@ function getTargetYmlFileName(targetRef: string): string {
 }
 
 // noinspection JSIgnoredPromiseFromCall
-run();
+run().catch(err => ghActions.error(err));
