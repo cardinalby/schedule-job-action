@@ -1481,14 +1481,17 @@ function run() {
     });
 }
 function runImpl() {
+    var _a, _b;
     return __awaiter(this, void 0, void 0, function* () {
         if (process.env.GITHUB_SHA === undefined) {
             throw new Error('GITHUB_SHA env variable is not set');
         }
         const { owner, repo } = github_1.context.repo;
         const octokit = new rest_1.Octokit({ auth: actionInputs_1.actionInputs.ghToken });
-        const currentCommit = (yield octokit.rest.repos.getCommit({ owner, repo, ref: process.env.GITHUB_SHA })).data;
-        currentCommit.commit;
+        const currentCommit = (_a = (yield octokit.rest.repos.getCommit({ owner, repo, ref: process.env.GITHUB_SHA }))) === null || _a === void 0 ? void 0 : _a.data;
+        if (!currentCommit) {
+            throw new Error(`Commit ${process.env.GITHUB_SHA} not found`);
+        }
         if (isTriggeredByAction(currentCommit)) {
             ghActions.info('Commit was triggered by the action, skip to prevent a loop');
             return;
@@ -1521,7 +1524,7 @@ function runImpl() {
             path: targetYmlFilePath,
             ref: 'heads/' + targetBranch
         }));
-        const existingSha = (existingFileResponse === null || existingFileResponse === void 0 ? void 0 : existingFileResponse.data).sha;
+        const existingSha = (_b = existingFileResponse === null || existingFileResponse === void 0 ? void 0 : existingFileResponse.data) === null || _b === void 0 ? void 0 : _b.sha;
         ghActions.info(existingSha ? `File found: ${existingSha}` : `File not found`);
         if (existingSha && !actionInputs_1.actionInputs.overrideTargetFile) {
             throw new Error(`${targetYmlFilePath} file already exists but overrideTargetFile is false!`);
@@ -1580,7 +1583,7 @@ function getTargetYmlFileName(targetRef) {
     return templateYmlFilePath.name + '-' + targetRef + '.yml';
 }
 // noinspection JSIgnoredPromiseFromCall
-run();
+run().catch(err => ghActions.error(err));
 
 
 /***/ }),
