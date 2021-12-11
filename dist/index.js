@@ -1464,7 +1464,6 @@ const fs = __importStar(__webpack_require__(747));
 const path = __importStar(__webpack_require__(622));
 const modifyScheduledWorkflow_1 = __webpack_require__(916);
 const github_1 = __webpack_require__(469);
-const auth_token_1 = __webpack_require__(813);
 const rest_1 = __webpack_require__(889);
 const octokitHandle404_1 = __webpack_require__(628);
 const consts_1 = __webpack_require__(389);
@@ -1487,7 +1486,7 @@ function runImpl() {
             throw new Error('GITHUB_SHA env variable is not set');
         }
         const { owner, repo } = github_1.context.repo;
-        const octokit = new rest_1.Octokit({ authStrategy: auth_token_1.createTokenAuth, auth: actionInputs_1.actionInputs.ghToken });
+        const octokit = new rest_1.Octokit({ auth: actionInputs_1.actionInputs.ghToken });
         const currentCommit = (yield octokit.rest.repos.getCommit({ owner, repo, ref: process.env.GITHUB_SHA })).data;
         currentCommit.commit;
         if (isTriggeredByAction(currentCommit)) {
