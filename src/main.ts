@@ -30,7 +30,7 @@ async function runImpl() {
     }
 
     const {owner, repo} = context.repo;
-    const octokit = new Octokit({authStrategy: createTokenAuth, auth: actionInputs.ghToken});
+    const octokit = new Octokit({auth: actionInputs.ghToken});
 
     const currentCommit = (await octokit.rest.repos.getCommit({owner, repo, ref: process.env.GITHUB_SHA})).data;
     currentCommit.commit
