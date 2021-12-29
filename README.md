@@ -39,9 +39,6 @@ on:
 jobs:
   singleJobName:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [12.x]
     steps:
       - uses: actions/checkout@v2
         with:

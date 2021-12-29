@@ -40,7 +40,7 @@ outputs:
   targetYmlFilePath:
     description: 'Absolute path to new yml file'
 runs:
-  using: 'node12'
+  using: 'node16'
   main: 'dist/index.js'
 branding:
   icon: 'tag'
