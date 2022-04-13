@@ -317,7 +317,7 @@ function runImpl() {
                     name: consts_1.consts.gitAuthorName
                 },
                 branch: actionInputs_1.actionInputs.targetBranch,
-                message: `Add delayed ${targetYmlFileName} job`,
+                message: `Add delayed ${targetYmlFileName} job [skip ci]`,
                 content: Buffer.from(workflowContents, 'binary').toString('base64'),
                 path: targetYmlFilePath,
                 sha: existingSha
