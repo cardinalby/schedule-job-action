@@ -255,7 +255,7 @@ function runImpl() {
             throw new Error('GITHUB_SHA env variable is not set');
         }
         const { owner, repo } = github_1.context.repo;
-        const octokit = new rest_1.Octokit({ auth: actionInputs_1.actionInputs.ghToken });
+        const octokit = new rest_1.Octokit({ auth: actionInputs_1.actionInputs.ghToken, baseUrl: process.env.GITHUB_API_URL });
         const currentCommit = (_a = (yield octokit.rest.repos.getCommit({ owner, repo, ref: process.env.GITHUB_SHA }))) === null || _a === void 0 ? void 0 : _a.data;
         if (!currentCommit) {
             throw new Error(`Commit ${process.env.GITHUB_SHA} not found`);

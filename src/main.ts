@@ -6,7 +6,6 @@ import * as fs from "fs";
 import * as path from "path";
 import { modifyScheduledWorkflow } from "./modifyScheduledWorkflow";
 import { context } from "@actions/github";
-import { createTokenAuth } from '@octokit/auth-token';
 import { Octokit } from '@octokit/rest';
 import {components as OctokitTypes} from "@octokit/openapi-types/types";
 import {octokitHandle404} from "./octokitHandle404";
@@ -30,7 +29,7 @@ async function runImpl() {
     }
 
     const {owner, repo} = context.repo;
-    const octokit = new Octokit({auth: actionInputs.ghToken});
+    const octokit = new Octokit({auth: actionInputs.ghToken, baseUrl: process.env.GITHUB_API_URL});
 
     const currentCommit = (await octokit.rest.repos.getCommit({owner, repo, ref: process.env.GITHUB_SHA}))?.data;
     if (!currentCommit) {
