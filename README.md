@@ -6,7 +6,8 @@ Sometimes you can't finish your CI/CD job in a single run: you have to wait for 
 until an external long-running process finishes. In that case, you can schedule a delayed job 
 to finish it later. 
 
-Read [the article](https://dev.to/cardinalby/scheduling-delayed-github-action-12a6) for details.
+Read [the article](https://cardinalby.github.io/blog/post/github-actions/implementing-deferred-steps/) for details
+and **other possible approaches**.
 
 ### Generate token
 To make it work, you have to 
