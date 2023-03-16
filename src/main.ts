@@ -19,7 +19,7 @@ async function run(): Promise<void> {
     try {
         await runImpl();
     } catch (error) {
-        ghActions.setFailed(error.message);
+        ghActions.setFailed(String(error));
     }
 }
 
@@ -54,14 +54,16 @@ async function runImpl() {
     const targetOwner = actionInputs.targetRepo ? actionInputs.targetRepo.owner : owner;
     const targetRepo = actionInputs.targetRepo ? actionInputs.targetRepo.repo : repo;
 
-    let targetBranch = actionInputs.targetBranch;
-    if (targetBranch === undefined) {
+    let targetBranch: string
+    if (actionInputs.targetBranch === undefined) {
         ghActions.info('Finding out repository default branch...');
         const targetBranchResponse = octokit.rest.repos.get({
             owner: targetOwner,
             repo: targetRepo
         });
         targetBranch = (await targetBranchResponse).data.default_branch;
+    } else {
+        targetBranch = actionInputs.targetBranch
     }
 
     ghActions.info(
@@ -120,7 +122,7 @@ async function runImpl() {
             sha: existingSha
         });
     } catch (e) {
-        ghActions.error('Error creating file: ' + e.message);
+        ghActions.error('Error creating file: ' + String(e));
         if (tagManager) {
             await tagManager.rollbackAction();
         }

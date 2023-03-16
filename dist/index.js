@@ -14,7 +14,7 @@ exports.actionInputs = {
     templateYmlFile: github_actions_utils_1.actionInputs.getWsPath('templateYmlFile', true),
     overrideTargetFile: github_actions_utils_1.actionInputs.getBool('overrideTargetFile', true),
     targetYmlFileName: github_actions_utils_1.actionInputs.getString('targetYmlFileName', false),
-    targetRepo: github_actions_utils_1.transformIfSet(github_actions_utils_1.actionInputs.getString('targetRepo', false), s => {
+    targetRepo: (0, github_actions_utils_1.transformIfSet)(github_actions_utils_1.actionInputs.getString('targetRepo', false), s => {
         const parts = s.split('/');
         if (parts.length === 2 && parts[0].length > 0 && parts[1].length > 0) {
             return {
@@ -27,7 +27,7 @@ exports.actionInputs = {
     targetBranch: github_actions_utils_1.actionInputs.getString('targetBranch', false),
     jobPayload: github_actions_utils_1.actionInputs.getString('jobPayload', false),
     addTag: github_actions_utils_1.actionInputs.getString('addTag', false),
-    copyEnvVariables: github_actions_utils_1.transformIfSet(github_actions_utils_1.actionInputs.getString('copyEnvVariables', false), s => s.split(/\s+/).filter(s => s.length > 0))
+    copyEnvVariables: (0, github_actions_utils_1.transformIfSet)(github_actions_utils_1.actionInputs.getString('copyEnvVariables', false), s => s.split(/\s+/).filter(s => s.length > 0))
 };
 
 
@@ -71,7 +71,11 @@ exports.consts = {
 
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -84,7 +88,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -112,7 +116,7 @@ class GithubTagManager {
         return __awaiter(this, void 0, void 0, function* () {
             ghActions.info(`GitHub: Checking if ${this._tagName} exists in ` +
                 `${this._targetOwner}/${this._targetRepo}...`);
-            const tagResponse = yield octokitHandle404_1.octokitHandle404(this._octokit.rest.git.getRef({
+            const tagResponse = yield (0, octokitHandle404_1.octokitHandle404)(this._octokit.rest.git.getRef({
                 owner: this._targetOwner,
                 repo: this._targetRepo,
                 ref: 'tags/' + this._tagName
@@ -197,7 +201,11 @@ exports.GithubTagManager = GithubTagManager;
 
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -210,7 +218,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -244,7 +252,7 @@ function run() {
             yield runImpl();
         }
         catch (error) {
-            ghActions.setFailed(error.message);
+            ghActions.setFailed(String(error));
         }
     });
 }
@@ -272,11 +280,11 @@ function runImpl() {
             : process.env.GITHUB_SHA;
         const targetYmlFileName = getTargetYmlFileName(targetRef);
         const targetYmlFilePath = path.join(WORKFLOWS_DIR, targetYmlFileName);
-        const targetYmlFileAbsPath = github_actions_utils_1.getWorkspacePath(targetYmlFilePath);
+        const targetYmlFileAbsPath = (0, github_actions_utils_1.getWorkspacePath)(targetYmlFilePath);
         const targetOwner = actionInputs_1.actionInputs.targetRepo ? actionInputs_1.actionInputs.targetRepo.owner : owner;
         const targetRepo = actionInputs_1.actionInputs.targetRepo ? actionInputs_1.actionInputs.targetRepo.repo : repo;
-        let targetBranch = actionInputs_1.actionInputs.targetBranch;
-        if (targetBranch === undefined) {
+        let targetBranch;
+        if (actionInputs_1.actionInputs.targetBranch === undefined) {
             ghActions.info('Finding out repository default branch...');
             const targetBranchResponse = octokit.rest.repos.get({
                 owner: targetOwner,
@@ -284,9 +292,12 @@ function runImpl() {
             });
             targetBranch = (yield targetBranchResponse).data.default_branch;
         }
+        else {
+            targetBranch = actionInputs_1.actionInputs.targetBranch;
+        }
         ghActions.info(`GitHub: check if ${targetYmlFilePath} file already exists in ` +
             `${targetOwner}/${targetRepo}@${targetBranch}...`);
-        const existingFileResponse = yield octokitHandle404_1.octokitHandle404(octokit.rest.repos.getContent({
+        const existingFileResponse = yield (0, octokitHandle404_1.octokitHandle404)(octokit.rest.repos.getContent({
             owner: targetOwner,
             repo: targetRepo,
             path: targetYmlFilePath,
@@ -299,7 +310,7 @@ function runImpl() {
         }
         ghActions.info(`Reading and modifying ${actionInputs_1.actionInputs.templateYmlFile}...`);
         let workflowContents = fs.readFileSync(actionInputs_1.actionInputs.templateYmlFile, 'utf8');
-        workflowContents = modifyScheduledWorkflow_1.modifyScheduledWorkflow(workflowContents, targetYmlFilePath, targetRef, actionInputs_1.actionInputs.addTag !== undefined, targetBranch, actionInputs_1.actionInputs.jobPayload, actionInputs_1.actionInputs.copyEnvVariables);
+        workflowContents = (0, modifyScheduledWorkflow_1.modifyScheduledWorkflow)(workflowContents, targetYmlFilePath, targetRef, actionInputs_1.actionInputs.addTag !== undefined, targetBranch, actionInputs_1.actionInputs.jobPayload, actionInputs_1.actionInputs.copyEnvVariables);
         const tagManager = actionInputs_1.actionInputs.addTag !== undefined
             ? new githubTagManager_1.GithubTagManager(octokit, targetOwner, targetRepo, actionInputs_1.actionInputs.addTag)
             : undefined;
@@ -324,7 +335,7 @@ function runImpl() {
             });
         }
         catch (e) {
-            ghActions.error('Error creating file: ' + e.message);
+            ghActions.error('Error creating file: ' + String(e));
             if (tagManager) {
                 yield tagManager.rollbackAction();
             }
@@ -363,7 +374,11 @@ run().catch(err => ghActions.error(err));
 
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -376,7 +391,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -384,7 +399,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.modifyScheduledWorkflow = void 0;
 const yaml = __importStar(__nccwpck_require__(1917));
 const ghActions = __importStar(__nccwpck_require__(2186));
-function modifyScheduledWorkflow(workflowContents, relativeFilePath, envRef, isTag, unscheduleTargetBranch, jobPayload, copyEnvVariables) {
+function modifyScheduledWorkflow(workflowContents, relativeFilePath, envRef, isTag, unScheduleTargetBranch, jobPayload, copyEnvVariables) {
     const loadedYml = yaml.safeLoad(workflowContents);
     if (typeof loadedYml !== 'object') {
         throw new Error(`Error parsing workflow yml`);
@@ -406,7 +421,7 @@ function modifyScheduledWorkflow(workflowContents, relativeFilePath, envRef, isT
         addEnv(job.env, 'DELAYED_JOB_CHECKOUT_REF', envRef);
         addEnv(job.env, 'DELAYED_JOB_CHECKOUT_REF_IS_TAG', isTag ? 'true' : 'false');
         addEnv(job.env, 'DELAYED_JOB_WORKFLOW_FILE_PATH', relativeFilePath);
-        addEnv(job.env, 'DELAYED_JOB_WORKFLOW_UNSCHEDULE_TARGET_BRANCH', unscheduleTargetBranch);
+        addEnv(job.env, 'DELAYED_JOB_WORKFLOW_UNSCHEDULE_TARGET_BRANCH', unScheduleTargetBranch);
         if (jobPayload !== undefined) {
             addEnv(job.env, 'DELAYED_JOB_PAYLOAD', jobPayload);
         }
@@ -5649,7 +5664,11 @@ exports.getWorkspacePath = getWorkspacePath;
 
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -5662,7 +5681,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -5682,7 +5701,7 @@ function getPathInput(inputName, required) {
         throw new Error(`Input ${inputName} is empty`);
     }
     return input
-        ? actionContext_1.getWorkspacePath(input)
+        ? (0, actionContext_1.getWorkspacePath)(input)
         : undefined;
 }
 function getBoolInput(inputName, required) {
@@ -5746,7 +5765,11 @@ exports.actionInputs = {
 
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
@@ -5759,7 +5782,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -5814,13 +5837,17 @@ exports.ActionTrOutput = ActionTrOutput;
 
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
 }) : (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
 }));
 var __exportStar = (this && this.__exportStar) || function(m, exports) {
-    for (var p in m) if (p !== "default" && !exports.hasOwnProperty(p)) __createBinding(exports, m, p);
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 __exportStar(__nccwpck_require__(3013), exports);

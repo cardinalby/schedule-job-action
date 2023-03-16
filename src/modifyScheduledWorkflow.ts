@@ -19,7 +19,7 @@ export function modifyScheduledWorkflow(
     relativeFilePath: string,
     envRef: string,
     isTag: boolean,
-    unscheduleTargetBranch: string,
+    unScheduleTargetBranch: string,
     jobPayload?: string|undefined,
     copyEnvVariables?: string[]|undefined
 ): string
@@ -48,7 +48,7 @@ export function modifyScheduledWorkflow(
         addEnv(job.env, 'DELAYED_JOB_CHECKOUT_REF', envRef);
         addEnv(job.env, 'DELAYED_JOB_CHECKOUT_REF_IS_TAG', isTag ? 'true' : 'false');
         addEnv(job.env, 'DELAYED_JOB_WORKFLOW_FILE_PATH', relativeFilePath);
-        addEnv(job.env, 'DELAYED_JOB_WORKFLOW_UNSCHEDULE_TARGET_BRANCH', unscheduleTargetBranch);
+        addEnv(job.env, 'DELAYED_JOB_WORKFLOW_UNSCHEDULE_TARGET_BRANCH', unScheduleTargetBranch);
 
         if (jobPayload !== undefined) {
             addEnv(job.env, 'DELAYED_JOB_PAYLOAD', jobPayload);

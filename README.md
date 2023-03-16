@@ -20,7 +20,7 @@ the secret with the `WORKFLOWS_TOKEN` name.
 # ... your steps ...
 # ...
 # schedule the rest for finishing later:
-
+- uses: actions/checkout@v2
 - uses: cardinalby/schedule-job-action@v1
   with:
     ghToken: ${{ secrets.WORKFLOWS_TOKEN }}
