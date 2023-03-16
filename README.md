@@ -17,10 +17,10 @@ the secret with the `WORKFLOWS_TOKEN` name.
 
 ### Schedule delayed job in your workflow
 ```yaml
+- uses: actions/checkout@v2
 # ... your steps ...
 # ...
 # schedule the rest for finishing later:
-- uses: actions/checkout@v2
 - uses: cardinalby/schedule-job-action@v1
   with:
     ghToken: ${{ secrets.WORKFLOWS_TOKEN }}
